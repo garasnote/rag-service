@@ -1,0 +1,94 @@
+[
+ {
+  "q": "¿Hay alguna oferta junior de Datavant en Barcelona?",
+  "expect": [
+   "datavant"
+  ]
+ },
+ {
+  "q": "¿Qué papel tiene Metyis abierto en Barcelona?",
+  "expect": [
+   "metyis"
+  ]
+ },
+ {
+  "q": "computer vision role in Asturias with industrial plant work",
+  "expect": [
+   "zylk"
+  ]
+ },
+ {
+  "q": "¿Dónde apliqué para ingeniero de datos con PySpark en remoto?",
+  "expect": [
+   "quental"
+  ]
+ },
+ {
+  "q": "empresa que pedía FastAPI y PostgreSQL en Madrid",
+  "expect": [
+   "invoin"
+  ]
+ },
+ {
+  "q": "¿Qué ofertas de Cinte Colombia tengo?",
+  "expect": [
+   "cinte"
+  ]
+ },
+ {
+  "q": "ICONTEC ingeniero de datos inteligencia artificial Bogotá",
+  "expect": [
+   "icontec"
+  ]
+ },
+ {
+  "q": "Arelance Azure Data Factory Databricks científico de datos",
+  "expect": [
+   "arelance"
+  ]
+ },
+ {
+  "q": "Seqera machine learning research engineer",
+  "expect": [
+   "seqera"
+  ]
+ },
+ {
+  "q": "Social You especialista automatización IA junior Barcelona",
+  "expect": [
+   "social you"
+  ]
+ },
+ {
+  "q": "Avanade generative AI engineer Azure OpenAI Copilot",
+  "expect": [
+   "avanade"
+  ]
+ },
+ {
+  "q": "¿qué pasó con la oferta de PwC NJFY27?",
+  "expect": [
+   "pwc"
+  ]
+ },
+ {
+  "q": "consultor en IA ruta alimentos Cámara de Comercio",
+  "expect": [
+   "camara de comercio",
+   "cámara de comercio"
+  ]
+ },
+ {
+  "q": "banco Finandina ingeniero de datos Chía",
+  "expect": [
+   "finandina"
+  ]
+ },
+ {
+  "q": "¿qué ofertas tengo en Medellín?",
+  "expect": [
+   "medellin",
+   "medellín"
+  ]
+ }
+]
