@@ -79,3 +79,73 @@ class TestLLM(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class EmbedTest(unittest.TestCase):
+    def test_deterministic_and_normalised(self):
+        from rag.embed import HashingEmbedder, cosine
+        e = HashingEmbedder(128)
+        a = e.vector("junior data scientist barcelona")
+        b = e.vector("junior data scientist barcelona")
+        self.assertEqual(a, b)
+        self.assertAlmostEqual(cosine(a, a), 1.0, places=6)
+        self.assertAlmostEqual(sum(x * x for x in a) ** 0.5, 1.0, places=6)
+        self.assertLess(cosine(a, e.vector("camión de reparto en valladolid")), 0.5)
+
+    def test_vector_index_ranks_the_right_doc_first(self):
+        from rag.embed import VectorIndex
+        docs = [
+            {"id": "a", "text": "analista de datos power bi etl excel sql remoto"},
+            {"id": "b", "text": "cocinero restaurante jornada completa madrid"},
+            {"id": "c", "text": "ingeniero de machine learning pytorch vision"},
+        ]
+        idx = VectorIndex(docs)
+        self.assertEqual(idx.search_text("power bi etl sql analista", k=1)[0]["id"], "a")
+        self.assertEqual(idx.search_text("pytorch vision machine learning", k=1)[0]["id"], "c")
+
+
+class FusionTest(unittest.TestCase):
+    def _doc(self, i):
+        return {"id": i, "text": i}
+
+    def test_doc_in_both_rankings_wins(self):
+        from rag.fusion import rrf
+        lex = [self._doc("x"), self._doc("y"), self._doc("z")]
+        den = [self._doc("y"), self._doc("w"), self._doc("x")]
+        fused = rrf([lex, den], top=3)
+        self.assertEqual(fused[0]["id"], "y")  # 2nd + 1st (0.0325) beats 1st + 3rd (0.0323)
+        self.assertEqual({d["id"] for d in fused}, {"x", "y", "w"})
+
+    def test_weights_shift_the_order(self):
+        from rag.fusion import rrf
+        lex = [self._doc("x"), self._doc("y")]
+        den = [self._doc("y"), self._doc("x")]
+        self.assertEqual(rrf([lex, den], top=2, weights=[5.0, 1.0])[0]["id"], "x")
+        self.assertEqual(rrf([lex, den], top=2, weights=[1.0, 5.0])[0]["id"], "y")
+
+
+class HydeTest(unittest.TestCase):
+    def test_prompt_contains_question_and_forbids_invention(self):
+        from rag.hyde import build_prompt
+        p = build_prompt("¿Hay ofertas junior de RAG en Barcelona?")
+        self.assertIn("RAG en Barcelona", p)
+        self.assertIn("Invent no names", p)
+
+    def test_hyde_search_uses_the_generated_passage(self):
+        from rag.embed import VectorIndex
+        from rag.hyde import hyde_search
+        class Stub:
+            model = "stub"
+            def chat(self, messages):
+                self.seen = messages
+                return "oferta junior de power bi y sql en barcelona"
+        docs = [
+            {"id": "a", "text": "junior power bi sql barcelona analista"},
+            {"id": "b", "text": "cocinero madrid"},
+        ]
+        idx = VectorIndex(docs)
+        client = Stub()
+        out = hyde_search("¿algo de BI junior?", client, idx, k=1)
+        self.assertIn("power bi", out["hypothetical"])
+        self.assertEqual(out["hits"][0]["id"], "a")
+        self.assertIn("¿algo de BI junior?", client.seen[0]["content"])
