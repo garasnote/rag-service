@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "job-market-rag"
+version = "0.1.0"
+description = "RAG over job postings with a measured retrieval evaluation (BM25, dense, RRF, HyDE)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Juan Pablo Osorio Rivera" }]
+# The core library is standard library only on purpose: retrieval and the eval
+# harness run with no install at all. Everything heavy is opt-in.
+dependencies = []
+
+[project.optional-dependencies]
+embeddings = [
+  "numpy>=1.24",
+  "onnxruntime>=1.17",
+  "tokenizers>=0.15",
+]
+api = [
+  "fastapi>=0.110",
+  "uvicorn>=0.27",
+]
+dev = [
+  "pytest>=8",
+]
+
+[project.urls]
+Homepage = "https://github.com/garasnote/rag-service"
+
+[tool.setuptools]
+packages = ["rag"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

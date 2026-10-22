@@ -89,16 +89,41 @@ No vector database on purpose: at 400 documents brute-force cosine is honest and
 dependency would be vanity. The interface (`vector(text) -> list[float]`, L2-normalised) is the
 seam where a real embedding model drops in.
 
+## Install
+
+The core is standard library only — clone and run, nothing to install:
+
+```bash
+python3 eval/run_eval.py                       # BM25 + hashed dense + fusion
+python3 -m unittest discover -s tests -v       # 16 tests, offline
+```
+
+The real embedder and the HTTP API are opt-in extras. Pick one environment manager:
+
+```bash
+# uv
+uv venv && uv pip install -e ".[embeddings,api]"
+
+# venv + pip
+python3 -m venv .venv && . .venv/bin/activate && pip install -e ".[embeddings,api]"
+
+# micromamba
+micromamba create -n rag python=3.11 -c conda-forge -y
+micromamba activate rag && pip install -e ".[embeddings,api]"
+```
+
+## Model
+
+```bash
+mkdir -p ~/models/minilm && cd ~/models/minilm
+curl -LO https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/onnx/model.onnx
+curl -LO https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/tokenizer.json
+```
+
 ## Run
 
 ```bash
-python3 eval/run_eval.py                   # hashed embedder, no dependencies
-pip install numpy onnxruntime tokenizers    # for the real model
-export MINILM_DIR=~/models/minilm           # model.onnx + tokenizer.json
-python3 eval/run_eval.py --embedder minilm
-python3 eval/run_eval.py --hyde            # HyDE with a real LLM
-python3 -m unittest discover -s tests -v   # 14 tests, all offline
-pip install -r requirements.txt
+MINILM_DIR=~/models/minilm python3 eval/run_eval.py --embedder minilm
 export LLM_API_KEY=... LLM_BASE_URL=... LLM_MODEL=...
 uvicorn api:app --port 8100
 curl -X POST localhost:8100/ask -H 'Content-Type: application/json' \

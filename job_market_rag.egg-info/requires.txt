@@ -1,0 +1,12 @@
+
+[api]
+fastapi>=0.110
+uvicorn>=0.27
+
+[dev]
+pytest>=8
+
+[embeddings]
+numpy>=1.24
+onnxruntime>=1.17
+tokenizers>=0.15
