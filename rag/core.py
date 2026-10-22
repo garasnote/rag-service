@@ -9,7 +9,7 @@ from collections import Counter
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 TRACKER = ROOT.parents[1] / "job_tracker" / "data.json"
-WAREHOUSE = ROOT.parent / "data-platform" / "warehouse.db"
+WAREHOUSE = ROOT.parent / "hiresignal" / "warehouse.db"
 
 STOP = set("""a al algo algunas algunos ante antes como con contra cual cuando de del desde donde
 dos el ella ellas ellos en entre era eres es esa esas ese eso esos esta estaba estan este esto estos
