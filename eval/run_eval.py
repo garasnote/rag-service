@@ -19,7 +19,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from rag.core import BM25, load_corpus, strip_accents  # noqa: E402
-from rag.embed import VectorIndex  # noqa: E402
+from rag.embed import VectorIndex, get_embedder  # noqa: E402
 from rag.fusion import rrf  # noqa: E402
 
 
@@ -49,11 +49,12 @@ def score(rankings, questions, k=5):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--hyde", action="store_true", help="use the LLM instead of the oracle stand-in")
+    ap.add_argument("--embedder", default="hash", help="hash | minilm | api")
     args = ap.parse_args()
 
     docs = load_corpus()
     bm25 = BM25(docs)
-    dense = VectorIndex(docs)
+    dense = VectorIndex(docs, embedder=get_embedder(args.embedder))
     questions = json.loads((ROOT / "eval" / "questions.json").read_text(encoding="utf-8"))
 
     client = None

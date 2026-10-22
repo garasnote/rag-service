@@ -11,42 +11,51 @@ and evaluation. This repo is those three things on a corpus nobody else has — 
 
 ## Measured, not claimed
 
-`python3 eval/run_eval.py` over 15 hand-written questions with known answers:
+`python3 eval/run_eval.py` over 15 hand-written questions with known answers, 400 documents.
+
+**Hashed bag-of-words embedder** (zero dependencies, the default):
 
 ```
-corpus: 400 documentos | preguntas: 15 | embedder: hashing-512
-
-config    hit@1  hit@3    MRR
-bm25        80%    87%  0.850
-dense       53%    53%  0.567
-hybrid      60%    73%  0.697
-hybrid3:1   67%    73%  0.733
-hyde       100%   100%  1.000   <- oracle ceiling, not a measurement
+config     hit@1  hit@3    MRR
+bm25         80%    87%   0.850
+dense        53%    53%   0.567
+hybrid       60%    73%   0.697
+hybrid 3:1   67%    73%   0.733
 ```
 
-Read that table honestly, because it is the most useful thing in the repo:
+**all-MiniLM-L6-v2, 384-d, ONNX** (`--embedder minilm`):
 
-- **BM25 wins on this corpus.** At 400 short, keyword-dense documents, lexical matching is hard
-  to beat.
-- **The dense index loses** because it is a hashed bag of words, not a semantic model. It has no
-  idea that "analista" and "analytics" are related. Swap in MiniLM or an embedding API and the
-  ranking changes; the harness is how I would find out, instead of trusting the vendor.
-- **Fusion hurt.** Blending a weak dense run into a strong lexical one with equal weights cost
-  0.15 MRR; weighting BM25 3:1 clawed some back, still below BM25 alone. RRF is not free.
-- **The HyDE row is a ceiling, not a result.** Without an API key the eval substitutes the
-  target document's own text for the hypothetical passage, so of course it scores 100%. It
-  proves the shape of the idea (retrieve with answer-shaped text and the ranking collapses to
-  the right document) and says nothing about what an LLM would actually write.
+```
+config        hit@1  hit@3    MRR
+bm25            80%    87%   0.850
+dense           60%    60%   0.600
+hybrid          67%    80%   0.763
+hybrid 3:1      73%    87%   0.802
+cascade@10      67%    80%   0.722
+```
 
-One question fails ("empresa que pedía FastAPI y PostgreSQL en Madrid") because the record's
-notes never mention FastAPI — a retrieval miss caused by the data, which is the honest kind.
+Read that honestly, because it is the most useful thing in the repo:
+
+- **BM25 still wins.** With a real semantic model the dense side improves from 0.567 to 0.600
+  MRR, and fusion with BM25 climbs from 0.697 to 0.802 — and still loses to lexical alone.
+- **Why:** these are 400 short, entity-heavy documents ("Datavant junior", "PySpark remoto") and
+  the questions name the entity. Rare exact tokens are exactly BM25's strength; MiniLM blurs them.
+  Embeddings earn their place on *vocabulary mismatch* — paraphrase queries over long prose —
+  which this corpus does not have. That is a property of the data, not of the model.
+- **Reranking a BM25 shortlist with the embedder made it worse** at every pool size tried
+  (10, 20, 40), because the first stage rarely loses the right document and cosine adds noise.
+- **The HyDE row is a ceiling, not a result.** Without an API key the eval substitutes the target
+  document's own text for the hypothetical passage, so of course it scores 100%.
+
+One question fails in every configuration ("empresa que pedía FastAPI y PostgreSQL en Madrid")
+because the record's notes never mention FastAPI — a retrieval miss caused by the data.
 
 ## Retrieval modes
 
 | mode | what it does | when to use it |
 |---|---|---|
 | `BM25` | Okapi BM25, k1=1.5 b=0.75 | default; best on this corpus |
-| `VectorIndex` | hashed 512-dim embeddings + cosine | when a semantic embedder is plugged in |
+| `VectorIndex` | dense vectors + cosine; `hash` (512-d) or MiniLM (384-d) or any /embeddings API | when vocabulary mismatch is the problem |
 | `rrf` | reciprocal rank fusion of any rankings, optional weights | combining lexical + dense |
 | `hyde` | LLM writes a hypothetical passage, retrieval uses that | queries phrased as questions, not keywords |
 
@@ -83,7 +92,10 @@ seam where a real embedding model drops in.
 ## Run
 
 ```bash
-python3 eval/run_eval.py                   # four configurations, no API key needed
+python3 eval/run_eval.py                   # hashed embedder, no dependencies
+pip install numpy onnxruntime tokenizers    # for the real model
+export MINILM_DIR=~/models/minilm           # model.onnx + tokenizer.json
+python3 eval/run_eval.py --embedder minilm
 python3 eval/run_eval.py --hyde            # HyDE with a real LLM
 python3 -m unittest discover -s tests -v   # 14 tests, all offline
 pip install -r requirements.txt

@@ -149,3 +149,22 @@ class HydeTest(unittest.TestCase):
         self.assertIn("power bi", out["hypothetical"])
         self.assertEqual(out["hits"][0]["id"], "a")
         self.assertIn("¿algo de BI junior?", client.seen[0]["content"])
+
+
+class EmbedderFactoryTest(unittest.TestCase):
+    def test_hash_is_the_default_and_unknown_names_fail(self):
+        from rag.embed import get_embedder
+        self.assertEqual(get_embedder().name, "hashing-512")
+        self.assertEqual(get_embedder("bow").name, "hashing-512")
+        with self.assertRaises(SystemExit):
+            get_embedder("does-not-exist")
+
+    def test_minilm_is_optional(self):
+        import os
+        from rag.embed import get_embedder
+        if not os.getenv("MINILM_DIR"):
+            self.skipTest("MINILM_DIR not set")
+        e = get_embedder("minilm")
+        v = e.vector("junior data scientist barcelona")
+        self.assertEqual(len(v), 384)
+        self.assertAlmostEqual(sum(x * x for x in v) ** 0.5, 1.0, places=5)
