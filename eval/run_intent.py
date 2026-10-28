@@ -48,6 +48,8 @@ def main() -> int:
     ap.add_argument("--corpus", default=None)
     ap.add_argument("--embedder", default="hash", help="hash | minilm | multi")
     ap.add_argument("--lang", default="all", choices=["all", "es", "en"])
+    ap.add_argument("--stem", default="none", choices=["none", "es"],
+                    help="none (default) | es: Spanish Snowball stems on docs and queries")
     ap.add_argument("-k", type=int, default=5)
     args = ap.parse_args()
 
@@ -59,8 +61,9 @@ def main() -> int:
         print("no questions")
         return 1
 
-    bm25 = BM25(docs)
-    index = VectorIndex(docs, get_embedder(args.embedder))
+    stem = args.stem == "es"
+    bm25 = BM25(docs, stem=stem)
+    index = VectorIndex(docs, get_embedder(args.embedder, stem=stem))
 
     def rankings(q: str):
         lex = bm25.search(q, k=args.k)

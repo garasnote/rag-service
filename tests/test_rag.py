@@ -179,3 +179,78 @@ class EmbedderFactoryTest(unittest.TestCase):
         v = e.vector("junior data scientist barcelona")
         self.assertEqual(len(v), 384)
         self.assertAlmostEqual(sum(x * x for x in v) ** 0.5, 1.0, places=5)
+
+
+class StemmerTest(unittest.TestCase):
+    """Spanish Snowball stems, and the guard that keeps them off names."""
+
+    def test_known_pairs_collapse_to_one_stem(self):
+        from rag.stem_es import stem_es
+        self.assertEqual(stem_es("analistas"), stem_es("analista"))
+        self.assertEqual(stem_es("corriendo"), stem_es("correr"))
+        self.assertEqual(stem_es("naciones"), stem_es("nacion"))
+        self.assertEqual(stem_es("trabajadores"), stem_es("trabajador"))
+        # a stem is not the singular: the plural loses more than the final s
+        self.assertNotEqual(stem_es("analistas"), "analista")
+        self.assertEqual(stem_es("analistas"), "anal")
+
+    def test_accents_are_optional_on_input_and_output(self):
+        from rag.stem_es import stem_es
+        self.assertEqual(stem_es("aplicaci\u00f3n"), stem_es("aplicacion"))
+        self.assertEqual(stem_es("aplicacion"), "aplic")
+
+    def test_entity_guard_leaves_names_and_acronyms_alone(self):
+        from rag.stem_es import stemmable
+        for token in ("Datavant", "Buynomics", "Cinte", "NTT", "BBVA", "KPMG", "SQL",
+                      "3a", "i+D"):
+            for policy in ("acronyms", "strict"):
+                with self.subTest(token=token, policy=policy):
+                    self.assertFalse(stemmable(token, policy=policy))
+        for token in ("analistas", "corriendo", "ofertas"):
+            with self.subTest(token=token):
+                self.assertTrue(stemmable(token))
+
+    def test_the_strict_policy_is_the_only_one_that_stops_capitalised_words(self):
+        from rag.stem_es import stemmable
+        self.assertTrue(stemmable("Alcampo"))                   # not on the allowlist
+        self.assertFalse(stemmable("Alcampo", policy="strict"))
+        self.assertFalse(stemmable("Analista", policy="strict"))
+        self.assertTrue(stemmable("Analista", sentence_initial=True, policy="strict"))
+
+    def test_tokenize_stems_only_the_guard_approved_words(self):
+        from rag.core import tokenize
+        self.assertEqual(tokenize("Datavant analistas"), ["datavant", "analistas"])
+        self.assertEqual(tokenize("Datavant analistas", stem=True), ["datavant", "anal"])
+        self.assertEqual(tokenize("NTT BBVA junior"), ["ntt", "bbva", "junior"])
+        self.assertEqual(tokenize("NTT BBVA junior", stem=True), ["ntt", "bbva", "junior"])
+
+    def test_bm25_finds_a_doc_through_a_plural_only_when_stemming(self):
+        from rag.core import BM25, load_corpus
+        docs = load_corpus(corpus=FIXTURE)
+        query = "analistas de datos"
+        plain = BM25(docs).search(query, k=1)
+        stemmed = BM25(docs, stem=True).search(query, k=1)
+        # "analistas" never matches "analista" without stemming: the top hit is a
+        # row that only shares "datos"
+        self.assertNotIn("analista", plain[0]["text"].lower())
+        self.assertIn("analista", stemmed[0]["text"].lower())
+
+    def test_port_matches_the_reference_snowball_stemmer(self):
+        import re
+        try:
+            import snowballstemmer
+        except ImportError:
+            self.skipTest("snowballstemmer not installed")
+        from rag.core import load_corpus
+        from rag.stem_es import stem_es
+        ref = snowballstemmer.stemmer("spanish")
+        words = set()
+        for doc in load_corpus(corpus=FIXTURE):
+            words.update(re.findall(r"[a-z\u00e1\u00e9\u00ed\u00f3\u00fa\u00fc\u00f1]+",
+                                    (doc["title"] + " " + doc["text"]).lower()))
+        words.update("""analisis analitica comunicaciones visualizacion llegue siguen
+        construyo leyendo explicarmelo optimizacion metodologias rapido facilmente
+        universidades posibilidades""".split())
+        mismatches = [(w, stem_es(w), ref.stemWord(w)) for w in sorted(words)
+                      if stem_es(w) != ref.stemWord(w)]
+        self.assertEqual(mismatches, [])

@@ -56,11 +56,14 @@ def main():
                     help="JSON question set (e.g. fixtures/questions.json)")
     ap.add_argument("--corpus", default=None,
                     help="standalone JSON corpus (e.g. fixtures/corpus.json) instead of the private tracker")
+    ap.add_argument("--stem", default="none", choices=["none", "es"],
+                    help="none (default) | es: Spanish Snowball stems on docs and queries")
     args = ap.parse_args()
 
+    stem = args.stem == "es"
     docs = load_corpus(corpus=args.corpus) if args.corpus else load_corpus()
-    bm25 = BM25(docs)
-    dense = VectorIndex(docs, embedder=get_embedder(args.embedder))
+    bm25 = BM25(docs, stem=stem)
+    dense = VectorIndex(docs, embedder=get_embedder(args.embedder, stem=stem))
     questions = json.loads(open(args.questions, encoding="utf-8").read()) if getattr(args, "questions", None) else json.loads((ROOT / "eval" / "questions.json").read_text(encoding="utf-8"))
     if getattr(args, "lang", "all") != "all":
         questions = [q for q in questions if q.get("lang", args.lang) == args.lang]

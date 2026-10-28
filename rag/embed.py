@@ -31,11 +31,15 @@ def _hash(feature: str) -> int:
 class HashingEmbedder:
     name = "hashing-512"
 
-    def __init__(self, dim: int = 512):
+    def __init__(self, dim: int = 512, stem: bool = False):
         self.dim = dim
+        self.stem = stem
+        if stem:
+            # the cache key is the embedder name, so stemming has to show up in it
+            self.name = "hashing-512+stem-es"
 
     def vector(self, text: str) -> list:
-        toks = tokenize(text)
+        toks = tokenize(text, stem=self.stem)
         feats = Counter(toks)
         for a, b in zip(toks, toks[1:]):
             feats[f"{a}_{b}"] += 1
@@ -136,10 +140,12 @@ def cosine(a: list, b: list) -> float:
     return sum(x * y for x, y in zip(a, b))
 
 
-def get_embedder(name: str = "hash"):
+def get_embedder(name: str = "hash", stem: bool = False):
+    """``stem`` only applies to the hashed embedder: MiniLM and the HTTP ones
+    tokenise text themselves, so their vectors are unaffected by the flag."""
     name = (name or "hash").lower()
     if name in ("hash", "hashing", "bow"):
-        return HashingEmbedder()
+        return HashingEmbedder(stem=stem)
     if name in ("minilm", "sentence-transformers", "st"):
         return MiniLMEmbedder()
     if name in ("multi", "multilingual", "multi-minilm"):
