@@ -7,7 +7,27 @@ Worth it only if the eval says so -- never on by default.
 """
 from .embed import VectorIndex
 
-PROMPT = """Write a short passage (4-6 sentences) that would answer the question below.
+# The corpus is a list of two-line records, so the hypothetical document has to
+# be a two-line record. Asking for "a passage of 4-6 sentences" produces prose
+# that lives nowhere near the records in embedding space, which is why the first
+# HyDE measurement lost by a third.
+PROMPT_RECORD = """A job-search index stores one short record per vacancy, in this shape:
+
+<Company> — <Role> · <City or Remote> · <seniority> · <stack>
+
+Example: Buynomics — Junior Data Scientist · Barcelona · junior · python pandas sql
+
+Write ONE record in exactly that shape that best matches the search below. Use a
+realistic company name, city, seniority and stack for that market. No sentences,
+no explanation, no quotes, at most 30 words.
+
+Search: {q}
+
+Record:"""
+
+# Kept for the ablation: this is the prompt from the paper, which assumes long
+# documents. It is measured in the README and it loses on this corpus.
+PROMPT_PROSE = """Write a short passage (4-6 sentences) that would answer the question below.
 Write it as if it were an excerpt from the source document, not as a chat reply.
 Invent no names, numbers or links that are not implied by the question.
 
@@ -15,14 +35,16 @@ Question: {q}
 
 Passage:"""
 
-
-def build_prompt(question: str) -> str:
-    return PROMPT.format(q=question.strip())
+PROMPTS = {"record": PROMPT_RECORD, "prose": PROMPT_PROSE}
 
 
-def hypothetical(question: str, client) -> str:
+def build_prompt(question: str, style: str = "record") -> str:
+    return PROMPTS[style].format(q=question.strip())
+
+
+def hypothetical(question: str, client, style: str = "record") -> str:
     """client.chat(messages) -> str, any OpenAI-compatible backend."""
-    return client.chat([{"role": "user", "content": build_prompt(question)}]).strip()
+    return client.chat([{"role": "user", "content": build_prompt(question, style)}]).strip()
 
 
 def hyde_search(question: str, client, index: VectorIndex, k: int = 5) -> dict:

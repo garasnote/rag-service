@@ -154,8 +154,29 @@ Same 15 questions in Spanish and English, each naming a company, 2,576 documents
 
 ### 4. HyDE, measured instead of assumed
 
-Ten DeepSeek passages per question, retrieved and fused with RRF: **0.419 MRR
-fused, 0.309 single-sample, against 0.622 for plain BM25.** Off by default.
+Same 20 intent queries, three DeepSeek samples per query, each retrieved and the
+rankings fused with RRF. Two prompts: the paper's "write a 4–6 sentence passage",
+and one that asks for a **record in the corpus's own shape** — `Company — Role ·
+City · seniority · stack` — because the documents are two-line records, not prose.
+
+| hypothetical style | fused sat@1 | fused sat@3 | fused sat@5 | single sat@5 |
+|---|---|---|---|---|
+| none — bm25 | 40% | 65% | 65% | — |
+| none — hybrid | **55%** | **70%** | **75%** | — |
+| prose passage (paper prompt) | 20% | 30% | 35% | 25% |
+| record-shaped | 10% | 35% | 55% | 55% |
+
+The prompt shape is worth **+20 points** (35% → 55% at k=5): asking for a passage
+makes the model write a paragraph about the job market, which is nowhere near a
+record in embedding space; asking for a record makes it invent a plausible
+`Tinybird — Junior Data Analyst · Remote · junior · sql python dbt`, which at
+least lives in the right neighbourhood. But even the better prompt still loses to
+simply using the query — 55% against 75% — so HyDE stays off by default here,
+and the samples are checked in as `eval/hyde_intent_samples.json` so the number
+can be reproduced without spending a token.
+
+On the entity benchmark with the paper prompt, HyDE scored 0.419 MRR against
+0.622 for plain BM25 — the same story from the other direction.
 
 ---
 
