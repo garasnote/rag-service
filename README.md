@@ -5,7 +5,7 @@
 ![python](https://img.shields.io/badge/python-3.9%2B-3776AB?logo=python&logoColor=white)
 ![core](https://img.shields.io/badge/core-stdlib%20only-2ea44f)
 ![tests](https://img.shields.io/badge/tests-15%20passed-2ea44f)
-![license](https://img.shields.io/badge/license-MIT-blue)
+![license](https://img.shields.io/badge/license-WTFPL-brightgreen)
 ![corpus](https://img.shields.io/badge/corpus-2%2C576%20documents-6f42c1)
 
 Retrieval over **2,576 job postings and application records** — BM25 and a dense
@@ -268,4 +268,4 @@ it touches.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+WTFPL v2 — do what the fuck you want. See [LICENSE](LICENSE).
