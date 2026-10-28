@@ -24,6 +24,10 @@ api = [
   "fastapi>=0.110",
   "uvicorn>=0.27",
 ]
+ui = [
+  # streamlit_app.py is the only module that imports it, and only lazily.
+  "streamlit>=1.30",
+]
 dev = [
   "pytest>=8",
 ]
