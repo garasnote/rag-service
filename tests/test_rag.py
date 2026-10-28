@@ -129,10 +129,17 @@ class FusionTest(unittest.TestCase):
 
 
 class HydeTest(unittest.TestCase):
-    def test_prompt_contains_question_and_forbids_invention(self):
+    def test_prompt_contains_question_and_asks_for_a_record(self):
         from rag.hyde import build_prompt
         p = build_prompt("¿Hay ofertas junior de RAG en Barcelona?")
         self.assertIn("RAG en Barcelona", p)
+        # the default prompt mirrors the corpus shape: records, not prose
+        self.assertIn("Company", p)
+        self.assertIn("Record", p)
+
+    def test_prose_prompt_is_still_available_for_the_ablation(self):
+        from rag.hyde import build_prompt
+        p = build_prompt("¿Hay ofertas junior de RAG en Barcelona?", style="prose")
         self.assertIn("Invent no names", p)
 
     def test_hyde_search_uses_the_generated_passage(self):
