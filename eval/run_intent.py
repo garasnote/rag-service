@@ -28,6 +28,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from rag.chunking import ChunkedBM25, ChunkedVectorIndex  # noqa: E402
 from rag.core import BM25, load_corpus, strip_accents  # noqa: E402
 from rag.embed import VectorIndex, get_embedder  # noqa: E402
 from rag.fusion import rrf  # noqa: E402
@@ -49,6 +50,8 @@ def main() -> int:
     ap.add_argument("--embedder", default="hash", help="hash | minilm | multi")
     ap.add_argument("--lang", default="all", choices=["all", "es", "en"])
     ap.add_argument("-k", type=int, default=5)
+    ap.add_argument("--chunk", action="store_true",
+                    help="score documents by their best ~600-char window (passage-level citations)")
     args = ap.parse_args()
 
     docs = load_corpus(corpus=args.corpus) if args.corpus else load_corpus()
@@ -59,8 +62,14 @@ def main() -> int:
         print("no questions")
         return 1
 
-    bm25 = BM25(docs)
-    index = VectorIndex(docs, get_embedder(args.embedder))
+    if args.chunk:
+        bm25 = ChunkedBM25(docs)
+        index = ChunkedVectorIndex(docs, get_embedder(args.embedder))
+        how = f"chunked ({index.chunks_per_doc:.2f} windows/doc)"
+    else:
+        bm25 = BM25(docs)
+        index = VectorIndex(docs, get_embedder(args.embedder))
+        how = "whole document"
 
     def rankings(q: str):
         lex = bm25.search(q, k=args.k)
@@ -80,7 +89,7 @@ def main() -> int:
                 misses[mode].append(item["q"])
 
     n = len(questions)
-    print(f"corpus: {len(docs)} documents | questions: {n} | embedder: {index.embedder.name}")
+    print(f"corpus: {len(docs)} documents | questions: {n} | embedder: {index.embedder.name} | {how}")
     print(f"\n{'mode':8} {'sat@1':>7} {'sat@3':>7} {'sat@' + str(args.k):>7}")
     for mode in modes:
         row = " ".join(f"{scores[mode][k] / n:>7.0%}" for k in (1, 3, args.k))

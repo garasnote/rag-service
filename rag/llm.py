@@ -3,6 +3,8 @@ import json
 import os
 import urllib.request
 
+from .chunking import citation_fields
+
 SYSTEM = ("Answer only from the numbered sources. If they do not contain the answer, say so "
           "plainly. Cite sources as [n]. Be brief: three sentences at most.")
 
@@ -52,5 +54,6 @@ def answer(question, index, k=5, client=None):
         return {"answer": "No matching postings.", "sources": []}
     client = client or OpenAICompat()
     text = client.chat(build_prompt(question, hits))
-    return {"answer": text, "sources": [{"n": i, "title": h["title"], "url": h["url"]}
+    return {"answer": text, "sources": [{"n": i, "title": h["title"], "url": h["url"],
+                                         **citation_fields(h)}
                                         for i, h in enumerate(hits, 1)]}

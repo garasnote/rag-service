@@ -5,10 +5,17 @@
     uvicorn api:app --reload --port 8100
     curl -X POST localhost:8100/ask -H 'Content-Type: application/json' \
          -d '{"question":"ofertas junior de computer vision en Espana"}'
+
+Sources carry a passage citation: ``chunk_index``, ``start``, ``end`` and
+``snippet``. ``text`` is still the whole posting, so callers that use it keep
+working. Set ``RAG_CHUNK=0`` to index whole documents instead of windows.
 """
+import os
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
+from rag.chunking import ChunkedBM25, citation_fields
 from rag.core import BM25, load_corpus
 from rag.llm import LLMError, answer as rag_answer
 
@@ -16,10 +23,11 @@ app = FastAPI(title="job-market-rag", version="0.1.0")
 _index = None
 
 
-def get_index() -> BM25:
+def get_index():  # BM25, or ChunkedBM25 when passage-level citations are on
     global _index
     if _index is None:
-        _index = BM25(load_corpus())
+        docs = load_corpus()
+        _index = BM25(docs) if os.getenv("RAG_CHUNK") == "0" else ChunkedBM25(docs)
     return _index
 
 
@@ -37,7 +45,8 @@ def health():
 def search(q: str, k: int = 5):
     if not q.strip():
         raise HTTPException(status_code=422, detail="q is empty")
-    return {"results": get_index().search(q, k=min(k, 20))}
+    hits = get_index().search(q, k=min(k, 20))
+    return {"results": [{**h, **citation_fields(h)} for h in hits]}
 
 
 @app.post("/ask")

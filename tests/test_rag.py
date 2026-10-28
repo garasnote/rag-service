@@ -162,6 +162,142 @@ class HydeTest(unittest.TestCase):
         self.assertIn("¿algo de BI junior?", client.seen[0]["content"])
 
 
+class ChunkingTest(unittest.TestCase):
+    """Passage-level windows: one document stays one result, offsets point at the passage."""
+
+    SHORT = "Junior data analyst, power bi, sql, Madrid, hibrido, jornada completa."
+
+    def _long(self, marker="kubernetes", filler="python sql pandas remoto junior", n=40):
+        return (filler + " ") * n + marker + " " + (filler + " ") * n
+
+    def test_short_document_is_exactly_one_chunk_identical_to_the_document(self):
+        from rag.chunking import chunk_document
+        out = chunk_document("d1", self.SHORT)
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0]["doc_id"], "d1")
+        self.assertEqual(out[0]["chunk_index"], 0)
+        self.assertEqual((out[0]["start"], out[0]["end"]), (0, len(self.SHORT)))
+        self.assertEqual(out[0]["text"], self.SHORT)
+
+    def test_empty_document_has_no_chunks(self):
+        from rag.chunking import chunk_document
+        self.assertEqual(chunk_document("d1", ""), [])
+        self.assertEqual(chunk_document("d1", None), [])
+
+    def test_long_document_is_split_and_still_covered(self):
+        from rag.chunking import chunk_document
+        text = self._long(n=60)
+        out = chunk_document("d1", text)
+        self.assertGreater(len(out), 1)
+        self.assertLessEqual(max(len(c["text"]) for c in out), 600)
+        self.assertEqual(out[0]["start"], 0)
+        self.assertEqual(out[-1]["end"], len(text))
+        self.assertEqual([c["chunk_index"] for c in out], list(range(len(out))))
+
+    def test_every_offset_slices_back_to_its_chunk_text(self):
+        from rag.chunking import chunk_document
+        text = self._long(n=60)
+        for c in chunk_document("d1", text):
+            self.assertEqual(text[c["start"]:c["end"]], c["text"])
+
+    def test_consecutive_windows_overlap_by_the_configured_amount(self):
+        from rag.chunking import chunk_document
+        out = chunk_document("d1", self._long(n=60), size=600, overlap=100)
+        for prev, nxt in zip(out, out[1:]):
+            self.assertEqual(nxt["start"], prev["end"] - 100)
+
+    def test_window_boundaries_do_not_cut_words_in_half(self):
+        from rag.chunking import chunk_document
+        text = self._long(n=60)
+        for c in chunk_document("d1", text)[:-1]:
+            # a chunk ends either on a space or at the very end of the document
+            self.assertTrue(c["text"].endswith(" ") or text[c["end"]] in " ")
+
+    def test_degenerate_overlap_is_rejected(self):
+        from rag.chunking import chunk_document
+        with self.assertRaises(ValueError):
+            chunk_document("d1", "x" * 2000, size=100, overlap=100)
+
+    def test_chunked_bm25_returns_the_document_once_with_its_best_window(self):
+        from rag.chunking import ChunkedBM25
+        docs = [{"id": "long", "url": "u1", "title": "long", "text": self._long()},
+                {"id": "short", "url": "u2", "title": "short", "text": "java spring madrid"}]
+        hits = ChunkedBM25(docs).search("kubernetes", k=5)
+        self.assertEqual(len(hits), 1, "one document, one result")
+        self.assertEqual(hits[0]["id"], "long")
+        self.assertEqual(hits[0]["text"], docs[0]["text"], "text stays the whole posting")
+        self.assertEqual(hits[0]["url"], "u1")
+        chunk = hits[0]["chunk"]
+        self.assertGreater(chunk["index"], 0)
+        self.assertIn("kubernetes", chunk["text"])
+        self.assertEqual(docs[0]["text"][chunk["start"]:chunk["end"]], chunk["text"])
+
+    def test_short_documents_are_cited_as_whole_documents(self):
+        from rag.chunking import ChunkedBM25
+        docs = [{"id": "a", "text": self.SHORT}, {"id": "b", "text": "cocinero madrid"}]
+        hit = ChunkedBM25(docs).search("power bi sql", k=1)[0]
+        self.assertEqual(hit["chunk"], {"index": 0, "start": 0, "end": len(self.SHORT),
+                                        "text": self.SHORT})
+        self.assertEqual(hit["text"], self.SHORT)
+
+    def test_chunked_dense_index_matches_the_plain_one_on_short_documents(self):
+        from rag.chunking import ChunkedVectorIndex
+        docs = [{"id": "a", "text": "analista de datos power bi etl excel sql remoto"},
+                {"id": "b", "text": "cocinero restaurante jornada completa madrid"},
+                {"id": "c", "text": "ingeniero de machine learning pytorch vision"}]
+        idx = ChunkedVectorIndex(docs)
+        self.assertEqual(idx.search_text("power bi etl sql", k=1)[0]["id"], "a")
+        self.assertEqual(idx.search_text("pytorch vision", k=1)[0]["id"], "c")
+        self.assertEqual(idx.chunks_per_doc, 1.0)
+
+    def test_citation_fields_fall_back_to_the_whole_document(self):
+        from rag.chunking import citation_fields, snippet
+        hit = {"id": "a", "text": "junior data analyst " * 40}
+        fields = citation_fields(hit)
+        self.assertEqual(fields["chunk_index"], 0)
+        self.assertEqual((fields["start"], fields["end"]), (0, len(hit["text"])))
+        self.assertLessEqual(len(fields["snippet"]), 243)
+        self.assertEqual(snippet("  hola \n\n mundo  "), "hola mundo")
+
+
+class ApiSourceTest(unittest.TestCase):
+    """/search and /ask sources gain chunk_index, start, end, snippet. No server needed."""
+
+    DOCS = [{"id": "long", "url": "https://x/1", "title": "Encora — Junior ML Engineer",
+             "text": ("junior data python sql remoto " * 40) + "kubernetes" + (" relleno" * 40)}]
+
+    def test_ask_sources_carry_the_passage_citation(self):
+        from rag.chunking import ChunkedBM25
+        from rag.llm import answer
+        class Stub:
+            model = "stub"
+            def chat(self, messages):
+                return "una respuesta [1]"
+        out = answer("kubernetes", ChunkedBM25(self.DOCS), k=1, client=Stub())
+        src = out["sources"][0]
+        self.assertEqual((src["n"], src["title"], src["url"]), (1, self.DOCS[0]["title"], "https://x/1"))
+        for key in ("chunk_index", "start", "end", "snippet"):
+            self.assertIn(key, src)
+        self.assertIn("kubernetes", src["snippet"])
+
+    def test_search_sources_carry_the_passage_citation(self):
+        try:
+            import api  # needs the api extra (fastapi)
+        except ImportError:
+            self.skipTest("fastapi not installed")
+        from rag.chunking import ChunkedBM25
+        api._index = ChunkedBM25(self.DOCS)
+        try:
+            out = api.search(q="kubernetes", k=1)
+        finally:
+            api._index = None
+        hit = out["results"][0]
+        for key in ("chunk_index", "start", "end", "snippet"):
+            self.assertIn(key, hit)
+        self.assertIn("kubernetes", hit["snippet"])
+        self.assertEqual(hit["text"], self.DOCS[0]["text"], "text stays the whole document")
+
+
 class EmbedderFactoryTest(unittest.TestCase):
     def test_hash_is_the_default_and_unknown_names_fail(self):
         from rag.embed import get_embedder
