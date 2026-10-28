@@ -18,15 +18,39 @@ quien se sin sobre su sus tambien tan te tiene todo tu tus un una uno unos y ya
 the a an and are as at be by for from has have how in is it its of on or that the their this to was
 were what when where which who why will with you your""".split())
 WORD = re.compile(r"[a-z0-9][a-z0-9+#.-]*")
+# Token shapes are found on the *surface* text when stemming, because the entity
+# guard needs to see capitals before they are lowered away.
+SURFACE = re.compile(r"[0-9A-Za-z\u00c0-\u024f][0-9A-Za-z\u00c0-\u024f+#.-]*")
 
 
 def strip_accents(text: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFKD", text) if not unicodedata.combining(c))
 
 
-def tokenize(text: str) -> list:
+def tokenize(text: str, stem: bool = False) -> list:
+    """Lowercase, accent-free tokens. ``stem`` runs the Spanish stemmer over the
+    tokens the entity guard allows and leaves the rest untouched."""
+    if stem:
+        return _tokenize_stemmed(text)
     text = strip_accents((text or "").lower())
     return [w for w in WORD.findall(text) if w not in STOP and len(w) > 1]
+
+
+def _tokenize_stemmed(text: str) -> list:
+    from .stem_es import stem_es, stemmable
+
+    raw = text or ""
+    out = []
+    for match in SURFACE.finditer(raw):
+        surface = match.group(0)
+        token = strip_accents(surface.lower())
+        if token in STOP or len(token) < 2:
+            continue
+        if stemmable(surface):
+            token = stem_es(token)
+        if token:
+            out.append(token)
+    return out
 
 
 def load_corpus(tracker: pathlib.Path = TRACKER, warehouse: pathlib.Path = WAREHOUSE,
@@ -89,11 +113,16 @@ def load_corpus(tracker: pathlib.Path = TRACKER, warehouse: pathlib.Path = WAREH
 
 
 class BM25:
-    """Okapi BM25. Small corpus, so scoring every doc per query is fine."""
-    def __init__(self, docs, k1: float = 1.5, b: float = 0.75):
+    """Okapi BM25. Small corpus, so scoring every doc per query is fine.
+
+    ``stem=True`` indexes and queries Spanish stems instead of surface words;
+    the entity guard in stem_es keeps company names out of the stemmer either way.
+    """
+    def __init__(self, docs, k1: float = 1.5, b: float = 0.75, stem: bool = False):
         self.docs = docs
         self.k1, self.b = k1, b
-        self.tokens = [tokenize(d["text"]) for d in docs]
+        self.stem = stem
+        self.tokens = [tokenize(d["text"], stem=stem) for d in docs]
         self.tf = [Counter(t) for t in self.tokens]
         self.dl = [len(t) for t in self.tokens]
         self.avgdl = (sum(self.dl) / len(self.dl)) if self.dl else 0.0
@@ -104,7 +133,7 @@ class BM25:
         self.idf = {w: math.log(1 + (n - c + 0.5) / (c + 0.5)) for w, c in df.items()}
 
     def search(self, query: str, k: int = 5) -> list:
-        q = tokenize(query)
+        q = tokenize(query, stem=self.stem)
         scored = []
         for i, tf in enumerate(self.tf):
             s = 0.0
