@@ -1,4 +1,6 @@
 """Retrieval core: corpus loading, tokenising, BM25. Standard library only."""
+from __future__ import annotations
+
 import json
 import math
 import pathlib

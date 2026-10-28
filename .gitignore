@@ -1,8 +1,22 @@
 __pycache__/
-*.pyc
-.env
-.DS_Store
+*.py[cod]
+
+# virtualenvs / tooling caches (the dense index cache and pytest both write here)
 .cache/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# build artefacts
 *.egg-info/
 build/
 dist/
+wheelhouse/
+out/
+
+# local config and logs
+.env
+*.log
+.DS_Store
