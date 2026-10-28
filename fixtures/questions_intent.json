@@ -1,0 +1,8 @@
+[
+  {"lang": "en", "q": "junior data jobs in Barcelona", "must": [["junior"], ["barcelona"]]},
+  {"lang": "en", "q": "Power BI role in Madrid", "must": [["power bi"], ["madrid"]]},
+  {"lang": "es", "q": "ofertas de datos en Colombia", "must": [["colombia"]]},
+  {"lang": "en", "q": "junior job in Seville", "must": [["junior"], ["sevilla"]]},
+  {"lang": "es", "q": "trabajo junior con SAS", "must": [["junior"], ["sas"]]},
+  {"lang": "en", "q": "remote AI engineer role", "must": [["remote"], ["ai"]]}
+]

@@ -10,8 +10,13 @@
 
 Retrieval over **2,576 job postings and application records** — BM25 and a dense
 index, fused with Reciprocal Rank Fusion, answered by any OpenAI-compatible LLM,
-with a citation on every claim. Every configuration was measured on the same
-benchmark, and the ones that lost are still in the tables.
+with a citation on every claim.
+
+Benchmarked on the queries people actually type — *"junior data jobs fully
+remote"*, *"anything in data I can do with no experience"* — not on questions
+that name the document. Hybrid retrieval satisfies **75% of real searches in the
+top five, against 65% for BM25 alone**; the same pipeline loses to BM25 on
+name lookup, and both results are in the tables.
 
 ```
 $ python3 -m rag.cli "which junior jobs are in Barcelona?"
@@ -37,6 +42,7 @@ corpus and eight answered questions are checked in.
 git clone https://github.com/garasnote/rag-service && cd rag-service
 pip install -e .
 python3 eval/run_eval.py --corpus fixtures/corpus.json --questions fixtures/questions.json
+python3 eval/run_intent.py --corpus fixtures/corpus.json --questions fixtures/questions_intent.json
 python3 -m pytest -q
 ```
 
@@ -48,6 +54,11 @@ bm25            88%   100%  0.917
 dense           88%   100%  0.938
 hybrid          88%   100%  0.938
 hybrid 3:1      88%   100%  0.917
+
+mode       sat@1   sat@3   sat@5     (intent questions)
+bm25         83%     83%     83%
+dense        67%     83%     83%
+hybrid       83%     83%     83%
 ```
 
 Point it at your own records — a JSON list of `{id, title, text, url}` — and ask
@@ -97,77 +108,89 @@ would hide the parts worth reading.
 
 ## Results
 
-2,576 documents, 30 questions (15 Spanish, 15 English), identical questions
-across every configuration.
+Two benchmarks, because a job search is two different searches. Neither is the
+one RAG demos usually ship.
 
-### Entity questions, same language and cross-language
+### 1. Searching by intent — what you actually type
+
+Twenty queries a person would really run on a bad Tuesday: "junior data jobs
+fully remote", "algo de datos que pueda hacer sin experiencia", "Power BI job in
+Colombia". No company names. The right answer is **any document that satisfies
+the constraints**, so this scores satisfaction at k, not recall of one gold row:
+
+| embedder | mode | sat@1 | sat@3 | sat@5 |
+|---|---|---|---|---|
+| hashing-512 | bm25 | 40% | 65% | 65% |
+| hashing-512 | dense | 30% | 30% | 35% |
+| hashing-512 | hybrid | 40% | 50% | 60% |
+| multilingual-MiniLM | bm25 | 40% | 65% | 65% |
+| multilingual-MiniLM | dense | 35% | 60% | 65% |
+| multilingual-MiniLM | **hybrid** | **50%** | **70%** | **75%** |
+
+Split by language, multilingual encoder: Spanish `bm25 70%` / `dense 60%` /
+**`hybrid 80%`** at 5; English `bm25 60%` / `dense 70%` / `hybrid 70%`. English
+queries gain the most from the dense side, which is what a cross-lingual encoder
+is for.
+
+### 2. Searching by name — the easy case
+
+Same 15 questions in Spanish and English, each naming a company, 2,576 documents:
 
 | embedder | config | hit@1 | hit@3 | MRR |
 |---|---|---|---|---|
 | hashing-512 | bm25 | **50%** | **70%** | **0.594** |
 | hashing-512 | dense | 33% | 47% | 0.394 |
 | hashing-512 | hybrid | 53% | 63% | 0.572 |
-| hashing-512 | hybrid 3:1 | 50% | 63% | 0.568 |
-| multilingual-MiniLM | bm25 | **50%** | **70%** | **0.594** |
 | multilingual-MiniLM | dense | 30% | 40% | 0.340 |
 | multilingual-MiniLM | hybrid | 43% | 63% | 0.533 |
 
-Per language with the multilingual encoder: Spanish **0.667** MRR, English
-**0.522** against a corpus that is mostly Spanish — the same split BM25 shows,
-which locates the loss in the documents rather than the encoder.
-
-### Paraphrase questions, no entity names
-
-Eight queries that describe a role instead of naming it — the case embeddings
-are supposed to win:
+### 3. Paraphrase, no entities at all
 
 | config | hit@1 | hit@3 | MRR |
 |---|---|---|---|
 | bm25 | 0% | 0% | 0.000 |
 | dense (multilingual) | 0% | 12% | 0.042 |
 | dense (hashing) | 12% | 12% | 0.125 |
-| hybrid | 0% | 0% | 0.000 |
 
-### HyDE, measured instead of assumed
+### 4. HyDE, measured instead of assumed
 
-Ten DeepSeek passages per question, each retrieved, fused with RRF:
-
-| config | MRR |
-|---|---|
-| bm25 | **0.622** |
-| hyde, 10 samples fused | 0.419 |
-| hyde, single sample | 0.309 |
+Ten DeepSeek passages per question, retrieved and fused with RRF: **0.419 MRR
+fused, 0.309 single-sample, against 0.622 for plain BM25.** Off by default.
 
 ---
 
 ## What the numbers say
 
-**BM25 wins, and the reason is the data.** A job record is two lines: company,
-title, city, stack. What separates 2,576 junior data roles from each other is
-*which words are in them* — the company, the town, the one tool that matters.
-That is a lexical problem. Embeddings put "Datavant junior in Barcelona" and
-"Buynomics junior in Barcelona" almost on top of each other, which is fatal when
-the difference is the whole query.
+**Intent search is where the pipeline earns its keep.** Hybrid with the
+multilingual encoder satisfies 75% of real queries in the top five against 65%
+for BM25 alone, and 80% on the Spanish half. That is the metric that matters,
+because it is the search a person with no job actually performs.
 
-**A 113 MB multilingual model loses to 512 dimensions of hashed bag-of-words**
-(0.340 vs 0.394). Not a bug in the model — a statement about the task. Hashing
-keeps exact tokens; the transformer keeps meaning, and the meaning here is "a
-junior data job", shared by a thousand documents.
+**The 113 MB encoder is worth it for intent and worthless for names.** On
+entity queries it loses to 512 dimensions of hashed bag-of-words (0.340 vs
+0.394), because a transformer collapses "Datavant junior in Barcelona" and
+"Buynomics junior in Barcelona" into nearly the same point — fatal when the
+company name *is* the query. On intent queries the same model adds ten points,
+because "junior jobs remote" and "remoto junior" finally land in the same place.
 
-**Cross-lingual retrieval does not rescue it.** English questions reach Spanish
-records at 0.522, but they arrive on the same company names. Remove the names
-and both languages fail together, which is the paraphrase table.
+**Which is why the benchmark everyone writes is the wrong one.** The standard
+RAG demo evaluates questions that name the document — and on those BM25 wins, so
+the demo concludes BM25 wins. Change the questions to what a searcher types and
+the ranking flips. The benchmark chooses the winner.
 
-**HyDE hurts by a third.** Hypothetical passages are fluent prose; the documents
-are two-line records. Invented specifics — plausible companies, plausible
-cities — steer retrieval toward the wrong rows, and RRF over ten noisy rankings
-fuses the noise instead of cancelling it. Implemented, off by default, and the
-table above is the reason.
+**Hybrid beats both, never by accident.** Every question BM25 misses on intent
+is a question where the words differ, not the meaning: *"junior data jobs fully
+remote"* against documents that say `remoto`, *"graduate in AI"* against
+`inteligencia artificial`. Fusing ranks lets the dense side cover the vocabulary
+gap without letting it outvote exact matches.
 
-**The questions that fail, fail for data reasons.** "Company that asked for FastAPI and
-PostgreSQL in Madrid" is missed by several configurations because that record never mentions
-FastAPI; "Datavant junior in Barcelona" is drowned by a corpus full of similar Barcelona junior
-records. The eval prints the failure list per configuration instead of averaging it away.
+**HyDE still loses by a third.** Hypothetical passages are fluent prose; the
+documents are two-line records, and the invented company names in the passage
+drag retrieval toward the wrong rows. Implemented, measured, off.
+
+**Failures are printed, not averaged away.** The harness lists which queries no
+configuration satisfies — usually data gaps, like a record whose notes never
+mention the stack that was asked for.
 
 ---
 

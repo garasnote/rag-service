@@ -21,3 +21,5 @@ jobs:
         run: python -m pytest -q
       - name: Fixture eval (no private data, no API key)
         run: python3 eval/run_eval.py --corpus fixtures/corpus.json --questions fixtures/questions.json
+      - name: Fixture intent eval
+        run: python3 eval/run_intent.py --corpus fixtures/corpus.json --questions fixtures/questions_intent.json

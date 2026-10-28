@@ -1,0 +1,51 @@
+[
+  {"lang": "es", "q": "ofertas junior de datos en remoto",
+   "must": [["junior", "entry", "trainee"], ["remoto", "remote"]]},
+  {"lang": "en", "q": "junior data jobs fully remote",
+   "must": [["junior", "entry", "trainee"], ["remoto", "remote"]]},
+
+  {"lang": "es", "q": "trabajo junior de analista de datos en Madrid",
+   "must": [["junior", "analista", "analyst"], ["madrid"]]},
+  {"lang": "en", "q": "entry level data analyst in Madrid",
+   "must": [["junior", "analyst", "entry"], ["madrid"]]},
+
+  {"lang": "es", "q": "puesto junior de data science en Barcelona",
+   "must": [["junior"], ["barcelona"]]},
+  {"lang": "en", "q": "junior data science role in Barcelona",
+   "must": [["junior"], ["barcelona"]]},
+
+  {"lang": "es", "q": "algo de datos que pueda hacer sin experiencia, en prácticas",
+   "must": [["practicas", "prácticas", "trainee", "junior"], ["datos", "data"]]},
+  {"lang": "en", "q": "data internship for someone with no experience",
+   "must": [["practicas", "prácticas", "trainee", "intern", "junior"], ["datos", "data"]]},
+
+  {"lang": "es", "q": "ofertas para recién graduado en inteligencia artificial",
+   "must": [["junior", "graduate", "trainee"], ["inteligencia artificial", "machine learning", " ia "]]},
+  {"lang": "en", "q": "graduate role in artificial intelligence, no experience needed",
+   "must": [["junior", "graduate", "trainee"], ["artificial", "machine learning", " ia "]]},
+
+  {"lang": "es", "q": "trabajo con Power BI en Colombia",
+   "must": [["power bi"], ["colombia", "bogota", "bogotá", "medellin", "medellín"]]},
+  {"lang": "en", "q": "Power BI job in Colombia",
+   "must": [["power bi"], ["colombia", "bogota", "bogotá", "medellin", "medellín"]]},
+
+  {"lang": "es", "q": "ingeniero de datos con Python y SQL en Valencia o Sevilla",
+   "must": [["python"], ["valencia", "sevilla"]]},
+  {"lang": "en", "q": "data engineer with Python and SQL in Valencia or Seville",
+   "must": [["python"], ["valencia", "sevilla"]]},
+
+  {"lang": "es", "q": "trabajo junior de visión por computador",
+   "must": [["junior"], ["vision", "visión", "computer vision"]]},
+  {"lang": "en", "q": "junior computer vision job",
+   "must": [["junior"], ["vision", "visión", "computer vision"]]},
+
+  {"lang": "es", "q": "puesto junior para trabajar con modelos de lenguaje",
+   "must": [["junior"], ["llm", "lenguaje", "language model"]]},
+  {"lang": "en", "q": "junior job working with language models",
+   "must": [["junior"], ["llm", "language model", "lenguaje"]]},
+
+  {"lang": "es", "q": "ofertas de datos en Medellín",
+   "must": [["medellin", "medellín"]]},
+  {"lang": "en", "q": "data jobs in Medellin",
+   "must": [["medellin", "medellín"]]}
+]
