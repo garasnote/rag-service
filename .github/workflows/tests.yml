@@ -141,12 +141,18 @@ jobs:
           RERANK_DIR: ${{ github.workspace }}/models/cross-encoder-ms-marco-minilm-l6-v2
           MULTI_DIR: ${{ github.workspace }}/models/paraphrase-multilingual-MiniLM-L12-v2
         run: |
-          set -eu
-          out=$(python -m pytest -q 2>&1 | tail -n 1)
-          echo "$out"
-          case "$out" in
-            *skipped*) echo "::error::an optional-dependency test was skipped with the extras installed"; exit 1 ;;
-          esac
+          set +e
+          python -m pytest -q -rs > pytest.log 2>&1
+          rc=$?
+          cat pytest.log
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::pytest failed with the extras installed"
+            exit 1
+          fi
+          if grep -q "skipped" pytest.log; then
+            echo "::error::an optional-dependency test was skipped with the extras installed"
+            exit 1
+          fi
 
       - name: Every embedder and the reranker, on the fixture corpus
         env:
