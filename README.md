@@ -4,7 +4,7 @@
 
 ![python](https://img.shields.io/badge/python-3.9%2B-3776AB?logo=python&logoColor=white)
 ![core](https://img.shields.io/badge/core-stdlib%20only-2ea44f)
-![tests](https://img.shields.io/badge/tests-15%20passed-2ea44f)
+![tests](https://img.shields.io/badge/tests-80%20passed-2ea44f)
 ![license](https://img.shields.io/badge/license-WTFPL-brightgreen)
 ![corpus](https://img.shields.io/badge/corpus-2%2C576%20documents-6f42c1)
 
@@ -222,6 +222,50 @@ that lost — are in [`docs/notes/`](docs/notes/), one file per change.
 Chunking barely fired: only 33 of 2,571 postings are longer than 600 characters,
 so 1.02 windows per document. It earns its place through citation precision, not
 through retrieval, and the table says so instead of implying a retrieval win.
+
+### 6. An independent corpus, not my own scrape
+
+Every number above comes from postings I collected myself, which is the first
+thing an interviewer should push back on. So the same pipeline runs here on
+[open-apply-jobs](https://huggingface.co/datasets/edwarddgao/open-apply-jobs)
+(MIT licence) — one Lever day, **46,241 real postings**, 18× the corpus above and
+with no overlap with it.
+
+| config | documents | hit@1 | hit@5 | MRR |
+|---|---|---|---|---|
+| BM25 | 46,241 | 38% | 51% | 0.444 |
+| BM25 + English Snowball | 46,241 | 34% | 51% | 0.415 |
+| BM25 + English Snowball | 12,000 | 39% | 78% | 0.560 |
+| dense (hashing) | 12,000 | 30% | 35% | 0.344 |
+| hybrid (RRF) | 12,000 | 39% | 70% | 0.532 |
+
+Three things the independent corpus says that mine could not:
+
+1. **Scale costs recall.** MRR 0.917 on 2,569 documents, **0.444 on 46,241** with
+   the same code. That is the real argument for the ANN index this repo has not
+   adopted yet.
+2. **English needs a stemmer too.** On queries resolvable from text alone, P@10
+   goes **0.650 → 0.817** with English Snowball — the same gain Spanish stemming
+   gave at home. `data engineering jobs` retrieves 0 of 10 relevant postings
+   without it and 6 with it.
+3. **Text retrieval cannot answer structured questions.** Queries whose
+   constraint lives in metadata — remote flag, salary, city, contract type —
+   score **P@10 0.250**, and stemming barely moves it (0.275). No reranker fixes
+   that; the filter has to run before the ranking.
+
+A bigger dataset was rejected on the way here: the NextGig multi-ATS snapshot
+(112,816 postings, CC-BY-4.0) fills `job_description` with an LLM-written
+two-to-four-sentence summary instead of the posting text. Retrieval over
+summaries answers a different question than retrieval over postings.
+
+```bash
+curl -L -o /tmp/lever.parquet https://huggingface.co/datasets/edwarddgao/open-apply-jobs/resolve/main/data/date=2026-04-17/source=lever/part.parquet
+python3 eval/run_external.py --parquet /tmp/lever.parquet
+```
+
+Limitations: one ATS, one day, English and US-heavy; the 12,000-document rows use
+23 queries (only those whose target fell inside the slice), so read them as a
+direction rather than a ranking of configurations.
 
 ## What the numbers say
 
