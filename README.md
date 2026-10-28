@@ -242,8 +242,8 @@ with no overlap with it.
 Three things the independent corpus says that mine could not:
 
 1. **Scale costs recall.** MRR 0.917 on 2,569 documents, **0.444 on 46,241** with
-   the same code. That is the real argument for the ANN index this repo has not
-   adopted yet.
+   the same code. Whether it also costs latency is a separate question, measured
+   in section 7.
 2. **English needs a stemmer too.** On queries resolvable from text alone, P@10
    goes **0.650 → 0.817** with English Snowball — the same gain Spanish stemming
    gave at home. `data engineering jobs` retrieves 0 of 10 relevant postings
@@ -266,6 +266,36 @@ python3 eval/run_external.py --parquet /tmp/lever.parquet
 Limitations: one ATS, one day, English and US-heavy; the 12,000-document rows use
 23 queries (only those whose target fell inside the slice), so read them as a
 direction rather than a ranking of configurations.
+
+### 7. At 227,000 postings, brute force still answers in a quarter second
+
+The full harvest — 243,331 postings from eight ATS platforms, one Parquet file —
+read through the same `BM25` as everything above:
+
+| | |
+|---|---|
+| documents with body text | 226,869 |
+| load (streamed parquet) | 24 s |
+| BM25 build | 19 s |
+| peak RSS | 1.9 GB |
+| query latency | median 0.24 s · p90 0.33 s |
+| hit@1 / hit@5 (title + company, 40 queries) | 30% / 50% |
+
+Two results, one of which contradicts what this README used to claim:
+
+- **The ANN argument was wrong for BM25.** Exhaustive scoring of 226,869 documents
+  takes 0.24 s. An approximate index would save microseconds and cost recall, so
+  `rag/ann.py` stays off. The real price of scale is memory (1.9 GB) and startup
+  (19 s), not query time.
+- **Quality still decays with corpus size.** 92% MRR at 2,569 documents, 51% hit@5
+  at 46,241, 50% at 226,869 — on identity queries with thousands of near-duplicate
+  titles, a bigger corpus means more plausible wrong answers, and no index fixes
+  that.
+
+```bash
+pip install -e ".[parquet]"
+python3 eval/run_scale.py --parquet /path/to/postings_all.parquet
+```
 
 ## What the numbers say
 
@@ -380,7 +410,7 @@ it touches.
 - [x] Spanish lemmatisation with a real stemmer, ablation kept in `eval/`
 - [x] Chunk-level citations for long postings
 - [x] Streamlit front end over `/ask`
-- [ ] Re-run the ANN bench at 100k documents, where approximation should start paying
+- [x] Re-run the scale bench at 227k documents — exhaustive BM25 still at 0.24 s, ANN stays off
 - [ ] A corpus with long postings, so chunking is measured on more than 33 documents
 - [ ] Decide whether the cross-encoder reranker is worth a default second pass
 

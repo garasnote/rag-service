@@ -30,6 +30,8 @@ def main(argv=None) -> int:
     ap.add_argument("query")
     ap.add_argument("-k", type=int, default=5)
     ap.add_argument("--corpus", default=None, help="standalone JSON corpus")
+    ap.add_argument("--parquet", default=None, help="harvested parquet snapshot (needs the parquet extra)")
+    ap.add_argument("--limit", type=int, default=0, help="cap documents read from --parquet")
     ap.add_argument("--embedder", default="hash", help="hash | minilm | multi")
     ap.add_argument("--mode", default="bm25", choices=["bm25", "dense", "hybrid"])
     ap.add_argument("--rerank", default="none", choices=list(NAMES),
@@ -38,7 +40,11 @@ def main(argv=None) -> int:
                     help="shortlist size handed to the reranker (-k when <= 0)")
     args = ap.parse_args(argv)
 
-    docs = load_corpus(corpus=args.corpus) if args.corpus else load_corpus()
+    if args.parquet:
+        from rag.parquet import load as load_parquet
+        docs = load_parquet(args.parquet, limit=args.limit or None)
+    else:
+        docs = load_corpus(corpus=args.corpus) if args.corpus else load_corpus()
     if not docs:
         print("no documents: pass --corpus or point TRACKER/WAREHOUSE at real data",
               file=sys.stderr)

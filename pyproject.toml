@@ -66,6 +66,10 @@ ui = [
   # streamlit_app.py is the only module that imports it, and only lazily.
   "streamlit>=1.30",
 ]
+parquet = [
+  # rag/parquet.py reads a harvested snapshot without loading it as JSON.
+  "pyarrow>=15",
+]
 dev = [
   "pytest>=8",
   # reference implementation the Spanish stemmer is checked against, word for word
