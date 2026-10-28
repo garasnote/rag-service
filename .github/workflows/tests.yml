@@ -149,7 +149,10 @@ jobs:
             echo "::error::pytest failed with the extras installed"
             exit 1
           fi
-          if grep -q "skipped" pytest.log; then
+          # The one legitimate skip needs private data no CI checkout can have.
+          unexpected=$(grep "^SKIPPED" pytest.log | grep -v "private tracker/warehouse not present" || true)
+          if [ -n "$unexpected" ]; then
+            echo "$unexpected"
             echo "::error::an optional-dependency test was skipped with the extras installed"
             exit 1
           fi

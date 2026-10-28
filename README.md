@@ -8,7 +8,7 @@
 ![license](https://img.shields.io/badge/license-WTFPL-brightgreen)
 ![corpus](https://img.shields.io/badge/corpus-2%2C576%20documents-6f42c1)
 
-Retrieval over **2,576 job postings and application records** — BM25 and a dense
+Retrieval over **2,569 job postings and application records** — BM25 and a dense
 index, fused with Reciprocal Rank Fusion, answered by any OpenAI-compatible LLM,
 with a citation on every claim.
 
@@ -83,6 +83,12 @@ MiniLM encoder), `.[ann]` (hnswlib), `.[rerank]` (cross-encoder), `.[api]`
 
 ## How it works
 
+![rag-service system topology](docs/architecture.svg)
+
+Three zones: ingestion builds both indexes offline, serving answers a request in
+milliseconds, and measurement gates every change. Nodes are modules that exist;
+dashed paths are optional and off by default.
+
 ```
         ┌──────────────┐   ┌────────────────┐      one document per posting,
         │ job tracker  │   │ ATS warehouse  │      every one keeps its URL
@@ -91,7 +97,7 @@ MiniLM encoder), `.[ann]` (hnswlib), `.[rerank]` (cross-encoder), `.[api]`
                └────────┬──────────┘
                         ▼
                  ┌─────────────┐
-                 │   corpus    │   2,576 documents, deduplicated by URL
+                 │   corpus    │   2,569 documents, deduplicated by URL
                  └──────┬──────┘
             ┌───────────┴────────────┐
             ▼                        ▼

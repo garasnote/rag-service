@@ -68,6 +68,8 @@ ui = [
 ]
 dev = [
   "pytest>=8",
+  # reference implementation the Spanish stemmer is checked against, word for word
+  "snowballstemmer>=3",
   "ruff>=0.6",
 ]
 
