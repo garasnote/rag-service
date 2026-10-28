@@ -20,6 +20,12 @@ embeddings = [
   "onnxruntime>=1.17",
   "tokenizers>=0.15",
 ]
+ann = [
+  # Optional approximate nearest-neighbour backend (rag/ann.py). Off by default:
+  # brute-force cosine over a few hundred documents is faster than maintaining a graph.
+  "hnswlib>=0.8",
+  "numpy>=1.24",
+]
 api = [
   "fastapi>=0.110",
   "uvicorn>=0.27",
