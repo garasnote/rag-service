@@ -29,8 +29,19 @@ def tokenize(text: str) -> list:
     return [w for w in WORD.findall(text) if w not in STOP and len(w) > 1]
 
 
-def load_corpus(tracker: pathlib.Path = TRACKER, warehouse: pathlib.Path = WAREHOUSE) -> list:
-    """One document per job record / posting. Every doc keeps its url for citation."""
+def load_corpus(tracker: pathlib.Path = TRACKER, warehouse: pathlib.Path = WAREHOUSE,
+                corpus: pathlib.Path | None = None) -> list:
+    """One document per job record / posting. Every doc keeps its url for citation.
+
+    Pass ``corpus`` to read a standalone JSON list instead of the private tracker
+    and warehouse — that is how a fresh clone runs the eval and the tests.
+    """
+    if corpus is not None:
+        rows = json.loads(pathlib.Path(corpus).read_text(encoding="utf-8"))
+        return [{"id": r.get("id") or f"fx:{i}", "url": r.get("url", ""),
+                 "title": r.get("title", ""), "text": r.get("text", "")}
+                for i, r in enumerate(rows)]
+
     docs, seen = [], set()
 
     if tracker.exists():

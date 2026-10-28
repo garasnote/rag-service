@@ -5,6 +5,28 @@ BM25 plus a dense index written from scratch and fused with RRF; the answer come
 OpenAI-compatible LLM, with citations. HyDE is implemented and measured — and on this corpus it
 loses, which is the most useful thing in the repo.
 
+## Run it in thirty seconds
+
+No API key, no network, no private data — a sixteen-document corpus and eight
+questions are checked in:
+
+```bash
+pip install -e .
+python3 eval/run_eval.py --corpus fixtures/corpus.json --questions fixtures/questions.json
+python3 -m pytest -q
+```
+
+```
+config        hit@1  hit@3    MRR
+bm25            75%   100%  0.875
+dense           62%    88%  0.781
+hybrid          75%   100%  0.854
+hybrid 3:1      88%   100%  0.917
+```
+
+The numbers below come from the full private corpus (2,576 documents). The
+fixture exists so the repo runs on your machine, not so it flatters itself.
+
 ## Why this exists
 
 Every GenAI job posting in Spain asks for the same three things: RAG, embeddings or retrieval,

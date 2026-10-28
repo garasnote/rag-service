@@ -1,0 +1,18 @@
+[
+  {"id": "fx:01", "url": "https://example.com/jobs/01", "title": "Datavant — Junior Data Scientist", "text": "Datavant junior data scientist Barcelona linked health records python sql junior"},
+  {"id": "fx:02", "url": "https://example.com/jobs/02", "title": "Buynomics — Junior Data Scientist", "text": "Buynomics junior data scientist Barcelona pricing analytics python pandas remote hybrid"},
+  {"id": "fx:03", "url": "https://example.com/jobs/03", "title": "Keepler Data Tech — Junior Data Analyst (Power BI)", "text": "Keepler Madrid junior data analyst power bi dax sql azure data platform consultancy"},
+  {"id": "fx:04", "url": "https://example.com/jobs/04", "title": "Cofidis — Data Scientist Junior", "text": "Cofidis Cornellà data scientist junior credit risk python scikit-learn sql banca"},
+  {"id": "fx:05", "url": "https://example.com/jobs/05", "title": "Metyis — Data Engineering Analyst", "text": "Metyis Barcelona data engineering analyst junior sql python etl consultoria"},
+  {"id": "fx:06", "url": "https://example.com/jobs/06", "title": "Cinte — Analista de datos Power BI", "text": "Cinte remoto Colombia analista de datos power bi etl sql python salario 4 a 6 millones COP"},
+  {"id": "fx:07", "url": "https://example.com/jobs/07", "title": "Gobernación del Meta — Data Analyst", "text": "Gobernación del Meta Villavicencio data analyst vigilancia epidemiologica dashboards google sheets appscript"},
+  {"id": "fx:08", "url": "https://example.com/jobs/08", "title": "Técnicas Reunidas — Junior Developer (Power BI)", "text": "Tecnicas Reunidas Madrid junior developer power bi ingenieria procesos reporting"},
+  {"id": "fx:09", "url": "https://example.com/jobs/09", "title": "KPMG — Junior Data Engineer", "text": "KPMG Madrid junior data engineer sql python etl azure data factory"},
+  {"id": "fx:10", "url": "https://example.com/jobs/10", "title": "SDG Group — Junior Data Engineering Consultant", "text": "SDG Group Valencia junior data engineering consultant sql python dbt snowflake"},
+  {"id": "fx:11", "url": "https://example.com/jobs/11", "title": "FeverUp — AI Engineer, Internal Automation", "text": "FeverUp Spain remote AI engineer internal automation LLM python agents forward deployed"},
+  {"id": "fx:12", "url": "https://example.com/jobs/12", "title": "NTT DATA — Junior AI Engineer (RAG)", "text": "NTT DATA Madrid junior AI engineer RAG python LLM embeddings vector database"},
+  {"id": "fx:13", "url": "https://example.com/jobs/13", "title": "Recurrent Energy — Junior Data Analyst, O&M", "text": "Recurrent Energy Sevilla junior data analyst O&M solar asset performance python sql energy"},
+  {"id": "fx:14", "url": "https://example.com/jobs/14", "title": "IDOM — Ingeniero/a de movilidad y datos (Junior)", "text": "IDOM Madrid ingeniero movilidad datos junior python gis sql transporte"},
+  {"id": "fx:15", "url": "https://example.com/jobs/15", "title": "Quental — Programador/a Junior SAS y R", "text": "Quental remoto programador junior SAS R estadistica banca 1-2 años experiencia"},
+  {"id": "fx:16", "url": "https://example.com/jobs/16", "title": "Arelance — Data Scientist", "text": "Arelance Alicante data scientist python sql azure data factory databricks 2 años"}
+]

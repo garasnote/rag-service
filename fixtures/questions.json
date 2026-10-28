@@ -1,0 +1,10 @@
+[
+  {"q": "¿Hay alguna oferta junior de Datavant en Barcelona?", "expect": ["datavant"]},
+  {"q": "¿Qué puesto junior tiene Keepler en Madrid?", "expect": ["keepler"]},
+  {"q": "¿Qué oferta de Power BI hay en Colombia?", "expect": ["cinte"]},
+  {"q": "¿Qué empresa busca un AI engineer en remoto en España?", "expect": ["feverup"]},
+  {"q": "¿Quién busca analista de datos junior en Sevilla?", "expect": ["recurrent"]},
+  {"q": "¿Qué oferta pide SAS y R?", "expect": ["quental"]},
+  {"q": "¿Qué oferta de ingeniería de datos hay en Valencia?", "expect": ["sdg"]},
+  {"q": "¿Qué puesto junior hay en Cornellà?", "expect": ["cofidis"]}
+]

@@ -1,4 +1,6 @@
-"""HTTP layer. Needs fastapi + uvicorn (pip install -r requirements.txt).
+"""HTTP layer. Needs the api extra:
+
+    pip install -e ".[api]"
 
     uvicorn api:app --reload --port 8100
     curl -X POST localhost:8100/ask -H 'Content-Type: application/json' \

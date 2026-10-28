@@ -50,12 +50,16 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--hyde", action="store_true", help="use the LLM instead of the oracle stand-in")
     ap.add_argument("--embedder", default="hash", help="hash | minilm | api")
+    ap.add_argument("--questions", default=None,
+                    help="JSON question set (e.g. fixtures/questions.json)")
+    ap.add_argument("--corpus", default=None,
+                    help="standalone JSON corpus (e.g. fixtures/corpus.json) instead of the private tracker")
     args = ap.parse_args()
 
-    docs = load_corpus()
+    docs = load_corpus(corpus=args.corpus) if args.corpus else load_corpus()
     bm25 = BM25(docs)
     dense = VectorIndex(docs, embedder=get_embedder(args.embedder))
-    questions = json.loads((ROOT / "eval" / "questions.json").read_text(encoding="utf-8"))
+    questions = json.loads(open(args.questions, encoding="utf-8").read()) if getattr(args, "questions", None) else json.loads((ROOT / "eval" / "questions.json").read_text(encoding="utf-8"))
 
     client = None
     if args.hyde:

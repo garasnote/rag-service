@@ -36,6 +36,7 @@ from run_eval import matches, score  # noqa: E402
 
 def main() -> int:
     ap = argparse.ArgumentParser()
+    ap.add_argument("--corpus", default=None, help="standalone JSON corpus instead of the private tracker")
     ap.add_argument("--samples", type=int, default=10)
     ap.add_argument("--embedder", default="hash")
     ap.add_argument("--temperature", type=float, default=0.9)
@@ -47,7 +48,7 @@ def main() -> int:
     if not key:
         sys.exit("no DEEPSEEK_API_KEY / LLM_API_KEY in the environment")
 
-    docs = load_corpus()
+    docs = load_corpus(corpus=args.corpus) if getattr(args,"corpus",None) else load_corpus()
     questions = json.loads((ROOT / "eval" / "questions.json").read_text(encoding="utf-8"))
     bm25 = BM25(docs)
     dense = VectorIndex(docs, embedder=get_embedder(args.embedder))
