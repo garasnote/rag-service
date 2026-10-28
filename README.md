@@ -68,6 +68,17 @@ for rankings:
 python3 -m rag.cli "remote LLM roles in Spain" --corpus my_postings.json -k 5
 ```
 
+A one-page front end, if you would rather click than type:
+
+```bash
+pip install -e ".[ui]"
+streamlit run streamlit_app.py
+```
+
+Optional extras, none of them needed for the quickstart: `.[embeddings]` (real
+MiniLM encoder), `.[ann]` (hnswlib), `.[rerank]` (cross-encoder), `.[api]`
+(FastAPI service), `.[ui]` (Streamlit), `.[dev]` (pytest, ruff).
+
 ---
 
 ## How it works
@@ -180,6 +191,32 @@ On the entity benchmark with the paper prompt, HyDE scored 0.419 MRR against
 
 ---
 
+### 5. Six changes, measured before being kept
+
+Each of these was built on its own branch, measured against the same 20 intent
+questions, and kept only if the number moved. Two of them lost and are off.
+
+| change | what it cost | measured effect | default |
+|---|---|---|---|
+| Spanish Snowball stemmer with an entity guard | stdlib, ~0 ms | bm25 sat@1 40% → 55%, sat@5 65% → 75% | off (`--stem es`) |
+| Cross-encoder rerank, ms-marco, pool 40 | ~90 MB model, second pass | bm25 40/65/65 → **65/85/85** | off (`--rerank cross`) |
+| Lexical rerank, idf overlap, pool 40 | stdlib | bm25 40/65/65 → 45/75/80 | off (`--rerank lexical`) |
+| Chunked scoring, for passage citations | 1.02 windows/doc | sat@5: bm25 65% → 70%, dense 35% → 40%, hybrid flat | on in the API, off in eval |
+| HNSW ANN index | hnswlib, 86 ms build | recall@10 0.97 at ef=50; 0.15 ms vs 0.16 ms for exhaustive numpy | **off** |
+| HyDE, record-shaped prompt | an LLM call per query | 55% sat@5 best case, against 75% for plain hybrid | **off** |
+
+The ANN result is the one worth reading twice: the graph is 100× faster than the
+stdlib scan, but a numpy matrix product is exact, dependency-free and just as
+fast at this size. Approximation only starts paying somewhere north of a hundred
+thousand documents, and that is where the eval has to be re-run.
+
+The full per-workstream measurements — commands, load averages, the configurations
+that lost — are in [`docs/notes/`](docs/notes/), one file per change.
+
+Chunking barely fired: only 33 of 2,571 postings are longer than 600 characters,
+so 1.02 windows per document. It earns its place through citation precision, not
+through retrieval, and the table says so instead of implying a retrieval win.
+
 ## What the numbers say
 
 **Intent search is where the pipeline earns its keep.** Hybrid with the
@@ -255,7 +292,10 @@ curl -s localhost:8100/ask -H 'content-type: application/json' \
 ```
 
 `POST /search` returns ranked documents; `POST /ask` returns
-`{"answer": "...", "sources": [{"n": 1, "title": "...", "url": "..."}]}`.
+`{"answer": "...", "sources": [{"n": 1, "title": "...", "url": "...", "snippet": "..."}]}`.
+Sources also carry `chunk_index`, `start` and `end`, so a citation points at the
+passage that matched rather than at the whole posting. Set `RAG_CHUNK=0` to index
+whole documents instead.
 
 Set `OPENAI_BASE_URL`, `OPENAI_API_KEY` and `OPENAI_MODEL` to any
 OpenAI-compatible endpoint. Without a key the retrieval half still works, and
@@ -266,26 +306,33 @@ it touches.
 
 ## Limitations
 
-- **Thirty questions is a small benchmark.** Enough to rank configurations
-  against each other, not enough to claim absolute quality.
-- **No ANN index.** Brute-force cosine over 2,576 documents takes milliseconds;
-  at a hundred thousand it would need one, and the eval would need to prove the
-  index did not cost recall.
-- **No reranker that helps.** A cross-encoder over the BM25 shortlist was tried
-  at pool sizes 10, 20 and 40 and lost at every size on this corpus.
-- **Spanish morphology is unhandled.** "analistas" does not match "analista".
-  A naive suffix stripper made things worse (0.917 → 0.667 on the fixture)
-  because it also shreds company names.
+- **Twenty intent questions and fifteen entity questions is a small benchmark.**
+  One question is five percentage points. Enough to rank configurations against
+  each other, not enough to claim absolute quality.
+- **ANN is implemented but not adopted.** At 2,571 documents an exhaustive numpy
+  scan is exact and equally fast; the graph costs a dependency and 86 ms of
+  build time. Revisit at 100k, with the same recall-versus-latency bench.
+- **The reranker that wins needs a model download.** The cross-encoder is the
+  best configuration measured (85% sat@5 at pool 40) and it is opt-in, because a
+  second pass over every query is a deployment decision, not a default.
+- **Chunk-level citations are barely exercised here.** Only 33 postings exceed
+  600 characters, so the windowing path is proven by tests more than by data.
+- **Spanish stemming helps intent and slightly hurts entity hybrid.** 40% → 55%
+  at sat@1 for bm25, but hybrid hit@3 drops 73% → 67% on 15 entity questions.
+  That is why it is a flag and not the default.
 - **Answers are only as good as retrieval.** The model is constrained to the
   retrieved context, so a miss stays a miss — it will say so rather than invent.
 
 ## Roadmap
 
-- [ ] ANN index (hnswlib) with a recall-versus-latency measurement
-- [ ] A reranker that is measured to help, not assumed to
-- [ ] Spanish lemmatisation with a real stemmer, ablation kept in `eval/`
-- [ ] Chunk-level citations for long postings
-- [ ] Streamlit front end over `/ask`
+- [x] ANN index (hnswlib) with a recall-versus-latency measurement — measured, not adopted
+- [x] A reranker that is measured to help — cross-encoder at pool 40, opt-in
+- [x] Spanish lemmatisation with a real stemmer, ablation kept in `eval/`
+- [x] Chunk-level citations for long postings
+- [x] Streamlit front end over `/ask`
+- [ ] Re-run the ANN bench at 100k documents, where approximation should start paying
+- [ ] A corpus with long postings, so chunking is measured on more than 33 documents
+- [ ] Decide whether the cross-encoder reranker is worth a default second pass
 
 ## License
 
