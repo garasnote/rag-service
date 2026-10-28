@@ -50,6 +50,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--hyde", action="store_true", help="use the LLM instead of the oracle stand-in")
     ap.add_argument("--embedder", default="hash", help="hash | minilm | api")
+    ap.add_argument("--lang", default="all", choices=["all", "es", "en"],
+                    help="restrict to one language when the question set is tagged")
     ap.add_argument("--questions", default=None,
                     help="JSON question set (e.g. fixtures/questions.json)")
     ap.add_argument("--corpus", default=None,
@@ -60,6 +62,8 @@ def main():
     bm25 = BM25(docs)
     dense = VectorIndex(docs, embedder=get_embedder(args.embedder))
     questions = json.loads(open(args.questions, encoding="utf-8").read()) if getattr(args, "questions", None) else json.loads((ROOT / "eval" / "questions.json").read_text(encoding="utf-8"))
+    if getattr(args, "lang", "all") != "all":
+        questions = [q for q in questions if q.get("lang", args.lang) == args.lang]
 
     client = None
     if args.hyde:

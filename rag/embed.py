@@ -54,14 +54,15 @@ class MiniLMEmbedder:
 
     name = "minilm-l6-v2-384"
 
-    def __init__(self, model_dir=None, max_len: int = 256):
+    def __init__(self, model_dir=None, max_len: int = 256, model_file: str = "model.onnx"):
         import numpy as np
         import onnxruntime as ort
         from tokenizers import Tokenizer
 
         self.np = np
         model_dir = pathlib.Path(model_dir or os.getenv("MINILM_DIR") or "")
-        if not (model_dir / "model.onnx").exists():
+        self.model_file = model_file if (model_dir / model_file).exists() else "model_quantized.onnx"
+        if not (model_dir / self.model_file).exists():
             raise FileNotFoundError(
                 f"MiniLM model not found in {model_dir or 'MINILM_DIR'}: needs model.onnx and tokenizer.json")
         self.tok = Tokenizer.from_file(str(model_dir / "tokenizer.json"))
@@ -69,7 +70,7 @@ class MiniLMEmbedder:
         self.tok.enable_padding()
         opts = ort.SessionOptions()
         opts.intra_op_num_threads = int(os.getenv("ORT_THREADS", "8"))
-        self.sess = ort.InferenceSession(str(model_dir / "model.onnx"), opts,
+        self.sess = ort.InferenceSession(str(model_dir / self.model_file), opts,
                                          providers=["CPUExecutionProvider"])
         self.inputs = {i.name for i in self.sess.get_inputs()}
 
@@ -141,9 +142,11 @@ def get_embedder(name: str = "hash"):
         return HashingEmbedder()
     if name in ("minilm", "sentence-transformers", "st"):
         return MiniLMEmbedder()
+    if name in ("multi", "multilingual", "multi-minilm"):
+        return MultilingualEmbedder()
     if name in ("api", "openai"):
         return ApiEmbedder()
-    raise SystemExit(f"unknown embedder: {name} (hash | minilm | api)")
+    raise SystemExit(f"unknown embedder: {name} (hash | minilm | multi | api)")
 
 
 class VectorIndex:
@@ -191,3 +194,24 @@ class VectorIndex:
         scored = [s for s in scored if s[0] > 0]
         scored.sort(key=lambda x: (-x[0], x[1]))
         return [{"score": round(s, 4), **self.docs[i]} for s, i in scored[:k]]
+
+
+MULTI_DIR_DEFAULT = pathlib.Path.home() / ".cache" / "models" / "paraphrase-multilingual-MiniLM-L12-v2"
+
+
+class MultilingualEmbedder(MiniLMEmbedder):
+    """paraphrase-multilingual-MiniLM-L12-v2 via onnxruntime.
+
+    Same tower as MiniLM, trained on 50+ languages including Spanish. The point
+    of this one is cross-lingual retrieval: an English question has to reach a
+    Spanish job record, which the hashed embedder cannot do and all-MiniLM
+    (English only) does badly.
+
+        export MULTI_DIR=~/.cache/models/paraphrase-multilingual-MiniLM-L12-v2
+        python3 eval/run_eval.py --embedder multi
+    """
+
+    name = "multilingual-minilm-l12-384"
+
+    def __init__(self, model_dir=None, max_len: int = 256):
+        super().__init__(model_dir or os.getenv("MULTI_DIR") or MULTI_DIR_DEFAULT, max_len)

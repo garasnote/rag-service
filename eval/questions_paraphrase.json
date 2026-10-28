@@ -1,0 +1,10 @@
+[
+  {"lang": "es", "q": "trabajo en remoto construyendo aplicaciones con modelos de lenguaje y búsqueda vectorial", "expect": ["ntt data", "feverup", "fever up"]},
+  {"lang": "es", "q": "puesto junior analizando el rendimiento de plantas solares", "expect": ["recurrent"]},
+  {"lang": "es", "q": "empresa de salud que unifica historiales clínicos de pacientes", "expect": ["datavant"]},
+  {"lang": "es", "q": "consultoría que prepara informes en Power BI para ingeniería", "expect": ["tecnicas reunidas", "técnicas reunidas"]},
+  {"lang": "en", "q": "remote role building retrieval augmented generation pipelines", "expect": ["ntt data", "feverup"]},
+  {"lang": "en", "q": "junior job evaluating credit risk with machine learning", "expect": ["cofidis"]},
+  {"lang": "en", "q": "junior position monitoring how well solar plants perform", "expect": ["recurrent"]},
+  {"lang": "es", "q": "sitio donde guardo las ofertas a las que ya me he postulado", "expect": ["mentorhub", "elempleo", "computrabajo", "linkedin"]}
+]

@@ -1,0 +1,46 @@
+[
+  {"lang": "es", "q": "¿Hay alguna oferta junior de Datavant en Barcelona?", "expect": ["datavant"]},
+  {"lang": "en", "q": "Is there a junior opening at Datavant in Barcelona?", "expect": ["datavant"]},
+
+  {"lang": "es", "q": "¿Qué papel tiene Metyis abierto en Barcelona?", "expect": ["metyis"]},
+  {"lang": "en", "q": "What role does Metyis have open in Barcelona?", "expect": ["metyis"]},
+
+  {"lang": "en", "q": "computer vision role in Asturias with industrial plant work", "expect": ["zylk"]},
+  {"lang": "es", "q": "puesto de visión por computador en Asturias con trabajo en planta industrial", "expect": ["zylk"]},
+
+  {"lang": "es", "q": "¿Dónde apliqué para ingeniero de datos con PySpark en remoto?", "expect": ["quental"]},
+  {"lang": "en", "q": "Where did I apply for a remote data engineer job with PySpark?", "expect": ["quental"]},
+
+  {"lang": "es", "q": "empresa que pedía FastAPI y PostgreSQL en Madrid", "expect": ["invoin"]},
+  {"lang": "en", "q": "which company asked for FastAPI and PostgreSQL in Madrid", "expect": ["invoin"]},
+
+  {"lang": "es", "q": "¿Qué ofertas de Cinte Colombia tengo?", "expect": ["cinte"]},
+  {"lang": "en", "q": "Which Cinte Colombia openings do I have?", "expect": ["cinte"]},
+
+  {"lang": "es", "q": "ICONTEC ingeniero de datos inteligencia artificial Bogotá", "expect": ["icontec"]},
+  {"lang": "en", "q": "ICONTEC data engineer artificial intelligence Bogota", "expect": ["icontec"]},
+
+  {"lang": "es", "q": "Arelance Azure Data Factory Databricks científico de datos", "expect": ["arelance"]},
+  {"lang": "en", "q": "Arelance Azure Data Factory Databricks data scientist", "expect": ["arelance"]},
+
+  {"lang": "es", "q": "Seqera machine learning research engineer", "expect": ["seqera"]},
+  {"lang": "en", "q": "Seqera machine learning research engineer", "expect": ["seqera"]},
+
+  {"lang": "es", "q": "Social You especialista automatización IA junior Barcelona", "expect": ["social you"]},
+  {"lang": "en", "q": "Social You junior AI automation specialist Barcelona", "expect": ["social you"]},
+
+  {"lang": "es", "q": "Avanade generative AI engineer Azure OpenAI Copilot", "expect": ["avanade"]},
+  {"lang": "en", "q": "Avanade generative AI engineer Azure OpenAI Copilot", "expect": ["avanade"]},
+
+  {"lang": "es", "q": "¿qué pasó con la oferta de PwC NJFY27?", "expect": ["pwc"]},
+  {"lang": "en", "q": "what happened with the PwC NJFY27 opening?", "expect": ["pwc"]},
+
+  {"lang": "es", "q": "consultor en IA ruta alimentos Cámara de Comercio", "expect": ["camara de comercio", "cámara de comercio"]},
+  {"lang": "en", "q": "AI consultant food route Chamber of Commerce", "expect": ["camara de comercio", "cámara de comercio"]},
+
+  {"lang": "es", "q": "banco Finandina ingeniero de datos Chía", "expect": ["finandina"]},
+  {"lang": "en", "q": "Finandina bank data engineer Chia", "expect": ["finandina"]},
+
+  {"lang": "es", "q": "¿qué ofertas tengo en Medellín?", "expect": ["medellin", "medellín"]},
+  {"lang": "en", "q": "which openings do I have in Medellin?", "expect": ["medellin", "medellín"]}
+]
