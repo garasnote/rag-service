@@ -88,3 +88,91 @@ jobs:
       - name: Console script answers from a fixture corpus
         run: |
           "$RUNNER_TEMP/clean/bin/rag" "junior data analyst" --corpus fixtures/corpus.json -k 2
+
+  optional-extras:
+    name: optional extras and models
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      # The three ONNX models the optional paths need. Cached, because they are
+      # ~200 MB together and a cache hit is the difference between 20s and 2min.
+      - name: Cache models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/models
+          key: rag-models-v1
+
+      - name: Fetch models
+        env:
+          M: ${{ env.HOME }}/.cache/models
+        run: |
+          set -eu
+          fetch() { mkdir -p "$(dirname "$2")"; [ -s "$2" ] || curl -sSL --fail -o "$2" "$1"; }
+          fetch https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/onnx/model.onnx \
+                "$M/all-MiniLM-L6-v2/model.onnx"
+          fetch https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/tokenizer.json \
+                "$M/all-MiniLM-L6-v2/tokenizer.json"
+          fetch https://huggingface.co/cross-encoder/ms-marco-MiniLM-L6-v2/resolve/main/onnx/model.onnx \
+                "$M/cross-encoder-ms-marco-minilm-l6-v2/onnx/model.onnx"
+          fetch https://huggingface.co/cross-encoder/ms-marco-MiniLM-L6-v2/resolve/main/tokenizer.json \
+                "$M/cross-encoder-ms-marco-minilm-l6-v2/tokenizer.json"
+          fetch https://huggingface.co/Xenova/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/onnx/model_quantized.onnx \
+                "$M/paraphrase-multilingual-MiniLM-L12-v2/model_quantized.onnx"
+          fetch https://huggingface.co/Xenova/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/tokenizer.json \
+                "$M/paraphrase-multilingual-MiniLM-L12-v2/tokenizer.json"
+          du -sh "$M"/*
+
+      - name: Install every extra
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,ann,rerank,embeddings,api,ui]"
+
+      - name: Tests, with no skip allowed
+        env:
+          MINILM_DIR: ${{ env.HOME }}/.cache/models/all-MiniLM-L6-v2
+          RERANK_DIR: ${{ env.HOME }}/.cache/models/cross-encoder-ms-marco-minilm-l6-v2
+          MULTI_DIR: ${{ env.HOME }}/.cache/models/paraphrase-multilingual-MiniLM-L12-v2
+        run: |
+          set -eu
+          out=$(python -m pytest -q 2>&1 | tail -n 1)
+          echo "$out"
+          case "$out" in
+            *skipped*) echo "::error::an optional-dependency test was skipped with the extras installed"; exit 1 ;;
+          esac
+
+      - name: Every embedder and the reranker, on the fixture corpus
+        env:
+          MULTI_DIR: ${{ env.HOME }}/.cache/models/paraphrase-multilingual-MiniLM-L12-v2
+          MINILM_DIR: ${{ env.HOME }}/.cache/models/all-MiniLM-L6-v2
+          RERANK_DIR: ${{ env.HOME }}/.cache/models/cross-encoder-ms-marco-minilm-l6-v2
+        run: |
+          for e in hash minilm multi; do
+            echo "== embedder: $e"
+            python eval/run_eval.py --embedder "$e" --corpus fixtures/corpus.json --questions fixtures/questions.json | head -8
+          done
+          echo "== hnsw"
+          python eval/bench_ann.py --corpus fixtures/corpus.json --questions fixtures/questions.json --repeats 3 | head -14
+          echo "== rerank, cross-encoder"
+          python eval/run_rerank.py --corpus fixtures/corpus.json --questions fixtures/questions_intent.json --rerank cross --pools 10 | head -14
+
+      - name: Streamlit page imports without a server
+        run: python -c "import streamlit_app; print(streamlit_app.labels('en')['query'])"
+
+      - name: API answers over HTTP
+        env:
+          RAG_CORPUS: ${{ github.workspace }}/fixtures/corpus.json
+        run: |
+          python -m uvicorn api:app --port 8100 --log-level warning &
+          for i in $(seq 1 30); do
+            curl -sf localhost:8100/openapi.json > /dev/null && break || sleep 1
+          done
+          curl -sf localhost:8100/search -H 'content-type: application/json' \
+               -d '{"q":"junior data analyst","k":3}' | head -c 300; echo

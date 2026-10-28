@@ -26,7 +26,8 @@ _index = None
 def get_index():  # BM25, or ChunkedBM25 when passage-level citations are on
     global _index
     if _index is None:
-        docs = load_corpus()
+        corpus = os.getenv("RAG_CORPUS")
+        docs = load_corpus(corpus=corpus) if corpus else load_corpus()
         _index = BM25(docs) if os.getenv("RAG_CHUNK") == "0" else ChunkedBM25(docs)
     return _index
 
