@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,8 +8,33 @@ version = "0.1.0"
 description = "RAG over job postings with a measured retrieval evaluation (BM25, dense, RRF, HyDE)"
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "WTFPL" }
+license = "WTFPL"
+license-files = ["LICENSE"]
 authors = [{ name = "Juan Pablo Osorio Rivera" }]
+keywords = [
+  "rag",
+  "retrieval",
+  "bm25",
+  "reciprocal-rank-fusion",
+  "hyde",
+  "evaluation",
+  "job-search",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+  "Topic :: Text Processing :: Indexing",
+]
 # The core library is standard library only on purpose: retrieval and the eval
 # harness run with no install at all. Everything heavy is opt-in.
 dependencies = []
@@ -20,19 +45,55 @@ embeddings = [
   "onnxruntime>=1.17",
   "tokenizers>=0.15",
 ]
+ann = [
+  # Optional approximate nearest-neighbour backend (rag/ann.py). Off by default:
+  # brute-force cosine over a few hundred documents is faster than maintaining a graph.
+  "hnswlib>=0.8",
+  "numpy>=1.24",
+]
+# The cross-encoder reranker: same three packages as embeddings, but a different
+# model (ms-marco, not sentence-transformers), so it gets its own extra.
+rerank = [
+  "numpy>=1.24",
+  "onnxruntime>=1.17",
+  "tokenizers>=0.15",
+]
 api = [
   "fastapi>=0.110",
   "uvicorn>=0.27",
 ]
+ui = [
+  # streamlit_app.py is the only module that imports it, and only lazily.
+  "streamlit>=1.30",
+]
 dev = [
   "pytest>=8",
+  "ruff>=0.6",
 ]
 
 [project.urls]
 Homepage = "https://github.com/garasnote/rag-service"
+Repository = "https://github.com/garasnote/rag-service"
+Issues = "https://github.com/garasnote/rag-service/issues"
+
+[project.scripts]
+rag = "rag.cli:main"
 
 [tool.setuptools]
 packages = ["rag"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+
+[tool.ruff]
+# Same floor as CI's oldest interpreter: ruff parses the sources as 3.9, so
+# syntax this project cannot run is reported rather than accepted.
+target-version = "py39"
+line-length = 100
+src = ["."]
+
+[tool.ruff.lint]
+# Deliberately narrow: syntax errors, undefined and unused names, broken
+# comparisons. Style rules (import sorting, line length) are left off so a lint
+# failure always means a real defect and the lint job does not reformat the tree.
+select = ["E4", "E7", "E9", "F"]

@@ -17,6 +17,7 @@ one.
 
     python3 eval/run_intent.py
     python3 eval/run_intent.py --embedder multi --lang en
+    python3 eval/run_intent.py --index ann --ef 50    # same questions, approximate search
 """
 from __future__ import annotations
 
@@ -28,6 +29,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from rag.chunking import ChunkedBM25, ChunkedVectorIndex  # noqa: E402
 from rag.core import BM25, load_corpus, strip_accents  # noqa: E402
 from rag.embed import VectorIndex, get_embedder  # noqa: E402
 from rag.fusion import rrf  # noqa: E402
@@ -48,10 +50,24 @@ def main() -> int:
     ap.add_argument("--corpus", default=None)
     ap.add_argument("--embedder", default="hash", help="hash | minilm | multi")
     ap.add_argument("--lang", default="all", choices=["all", "es", "en"])
+    ap.add_argument("--stem", default="none", choices=["none", "es"],
+                    help="none (default) | es: Spanish Snowball stems on docs and queries")
     ap.add_argument("-k", type=int, default=5)
+    ap.add_argument("--chunk", action="store_true",
+                    help="score documents by their best ~600-char window (passage-level citations)")
+    ap.add_argument("--index", default="exact", choices=["exact", "ann"],
+                    help="exact cosine (default) or the hnswlib ANN backend from rag/ann.py")
+    ap.add_argument("--ef", type=int, default=50, help="query-time ef for --index ann")
+    ap.add_argument("--tracker", default=None,
+                    help="explicit job_tracker data.json, for running from a worktree where the default path is not visible")
     args = ap.parse_args()
 
-    docs = load_corpus(corpus=args.corpus) if args.corpus else load_corpus()
+    if args.corpus:
+        docs = load_corpus(corpus=args.corpus)
+    elif args.tracker:
+        docs = load_corpus(tracker=pathlib.Path(args.tracker).expanduser())
+    else:
+        docs = load_corpus()
     questions = json.loads(pathlib.Path(args.questions).read_text(encoding="utf-8"))
     if args.lang != "all":
         questions = [q for q in questions if q.get("lang", args.lang) == args.lang]
@@ -59,8 +75,26 @@ def main() -> int:
         print("no questions")
         return 1
 
-    bm25 = BM25(docs)
-    index = VectorIndex(docs, get_embedder(args.embedder))
+    stem = args.stem == "es"
+    embedder = get_embedder(args.embedder, stem=stem)
+    if args.chunk and args.index == "ann":
+        print("error: --chunk and --index ann are not composable yet (windows would need their own graph)")
+        return 2
+    if args.chunk:
+        bm25 = ChunkedBM25(docs, stem=stem)
+        index = ChunkedVectorIndex(docs, embedder)
+        how = f"chunked ({index.chunks_per_doc:.2f} windows/doc)"
+        backend = "exact"
+    else:
+        bm25 = BM25(docs, stem=stem)
+        if args.index == "ann":
+            from rag.ann import HNSWIndex
+            index = HNSWIndex(docs, embedder, ef=args.ef)
+            backend = f"ann(ef={args.ef})"
+        else:
+            index = VectorIndex(docs, embedder)
+            backend = "exact"
+        how = "whole document"
 
     def rankings(q: str):
         lex = bm25.search(q, k=args.k)
@@ -80,7 +114,7 @@ def main() -> int:
                 misses[mode].append(item["q"])
 
     n = len(questions)
-    print(f"corpus: {len(docs)} documents | questions: {n} | embedder: {index.embedder.name}")
+    print(f"corpus: {len(docs)} documents | questions: {n} | embedder: {index.embedder.name} | {how} | dense: {backend}")
     print(f"\n{'mode':8} {'sat@1':>7} {'sat@3':>7} {'sat@' + str(args.k):>7}")
     for mode in modes:
         row = " ".join(f"{scores[mode][k] / n:>7.0%}" for k in (1, 3, args.k))

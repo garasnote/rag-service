@@ -18,6 +18,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from rag.chunking import ChunkedBM25, ChunkedVectorIndex  # noqa: E402
 from rag.core import BM25, load_corpus, strip_accents  # noqa: E402
 from rag.embed import VectorIndex, get_embedder  # noqa: E402
 from rag.fusion import rrf  # noqa: E402
@@ -56,11 +57,18 @@ def main():
                     help="JSON question set (e.g. fixtures/questions.json)")
     ap.add_argument("--corpus", default=None,
                     help="standalone JSON corpus (e.g. fixtures/corpus.json) instead of the private tracker")
+    ap.add_argument("--stem", default="none", choices=["none", "es"],
+                    help="none (default) | es: Spanish Snowball stems on docs and queries")
+    ap.add_argument("--chunk", action="store_true",
+                    help="score documents by their best ~600-char window (passage-level citations)")
     args = ap.parse_args()
 
+    stem = args.stem == "es"
     docs = load_corpus(corpus=args.corpus) if args.corpus else load_corpus()
-    bm25 = BM25(docs)
-    dense = VectorIndex(docs, embedder=get_embedder(args.embedder))
+    bm25 = ChunkedBM25(docs, stem=stem) if args.chunk else BM25(docs, stem=stem)
+    dense = ChunkedVectorIndex(docs, embedder=get_embedder(args.embedder, stem=stem)) \
+        if args.chunk else VectorIndex(docs, embedder=get_embedder(args.embedder, stem=stem))
+    how = f"chunked ({dense.chunks_per_doc:.2f} windows/doc)" if args.chunk else "whole document"
     questions = json.loads(open(args.questions, encoding="utf-8").read()) if getattr(args, "questions", None) else json.loads((ROOT / "eval" / "questions.json").read_text(encoding="utf-8"))
     if getattr(args, "lang", "all") != "all":
         questions = [q for q in questions if q.get("lang", args.lang) == args.lang]
@@ -94,7 +102,7 @@ def main():
         hq = hyde_text(item)
         conf["hyde"].append(rrf([bm25.search(hq, k=10), dense.search_text(hq, k=10)], top=5))
 
-    print(f"corpus: {len(docs)} documents | questions: {len(questions)} | embedder: {dense.embedder.name}")
+    print(f"corpus: {len(docs)} documents | questions: {len(questions)} | embedder: {dense.embedder.name} | {how}")
     print(f"hyde    : {'LLM (' + client.model + ')' if client else 'oracle stand-in (ceiling, not a measurement)'}\n")
     print(f"{'config':8} {'hit@1':>6} {'hit@3':>6} {'MRR':>6}")
     results = {}

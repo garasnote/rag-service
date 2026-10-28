@@ -1,0 +1,43 @@
+name: lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compile-and-lint:
+    name: compileall + ruff
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      # ruff rides in the dev extra, so the library stays stdlib only.
+      - name: Install dev tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      # Byte-compiles without importing: catches the syntax errors a stray edit
+      # leaves behind in a script no test imports (the eval harnesses).
+      - name: Byte-compile the library, the eval harness and the API
+        run: python -m compileall -q rag eval api.py
+
+      - name: ruff check
+        run: |
+          python -m ruff --version
+          python -m ruff check rag eval api.py

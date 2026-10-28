@@ -31,7 +31,7 @@ from rag.embed import VectorIndex, get_embedder  # noqa: E402
 from rag.fusion import rrf  # noqa: E402
 from rag.hyde import build_prompt  # noqa: E402
 from rag.llm import LLMError, OpenAICompat  # noqa: E402
-from run_eval import matches, score  # noqa: E402
+from run_eval import score  # noqa: E402
 
 
 def main() -> int:
