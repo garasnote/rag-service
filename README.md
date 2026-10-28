@@ -1,8 +1,9 @@
 # job-market-rag
 
-Ask questions about 400 job postings and application records you already own. Retrieval is
+Ask questions about 2,576 job postings and application records you already own. Retrieval is
 BM25 plus a dense index written from scratch and fused with RRF; the answer comes from any
-OpenAI-compatible LLM, with citations. HyDE is implemented and measured, not assumed.
+OpenAI-compatible LLM, with citations. HyDE is implemented and measured — and on this corpus it
+loses, which is the most useful thing in the repo.
 
 ## Why this exists
 
@@ -11,44 +12,46 @@ and evaluation. This repo is those three things on a corpus nobody else has — 
 
 ## Measured, not claimed
 
-`python3 eval/run_eval.py` over 15 hand-written questions with known answers, 400 documents.
-
-**Hashed bag-of-words embedder** (zero dependencies, the default):
-
-```
-config     hit@1  hit@3    MRR
-bm25         80%    87%   0.850
-dense        53%    53%   0.567
-hybrid       60%    73%   0.697
-hybrid 3:1   67%    73%   0.733
-```
-
-**all-MiniLM-L6-v2, 384-d, ONNX** (`--embedder minilm`):
+`python3 eval/run_eval.py` — 15 hand-written questions with known answers, against the live
+corpus: **2,576 documents** (my job tracker plus every posting in the warehouse), hashing
+embedder, run 28 Oct 2026.
 
 ```
 config        hit@1  hit@3    MRR
-bm25            80%    87%   0.850
-dense           60%    60%   0.600
-hybrid          67%    80%   0.763
-hybrid 3:1      73%    87%   0.802
-cascade@10      67%    80%   0.722
+bm25            53%    73%   0.622
+dense           40%    53%   0.467
+hybrid          60%    73%   0.656
+hybrid 3:1      53%    73%   0.622
+hyde 10x        27%    53%   0.419
+hyde 1x          —      —     0.309
 ```
 
-Read that honestly, because it is the most useful thing in the repo:
+Read that honestly:
 
-- **BM25 still wins.** With a real semantic model the dense side improves from 0.567 to 0.600
-  MRR, and fusion with BM25 climbs from 0.697 to 0.802 — and still loses to lexical alone.
-- **Why:** these are 400 short, entity-heavy documents ("Datavant junior", "PySpark remoto") and
-  the questions name the entity. Rare exact tokens are exactly BM25's strength; MiniLM blurs them.
-  Embeddings earn their place on *vocabulary mismatch* — paraphrase queries over long prose —
-  which this corpus does not have. That is a property of the data, not of the model.
+- **On 400 documents BM25 won at 0.850 and the README said so.** The corpus then grew sixfold
+  (job tracker + warehouse), the questions did not change, and the ranking inverted: dense
+  contributions now help, hybrid leads at 0.656, BM25 falls to 0.622. Five times more documents
+  means five times more lexical near-misses. Scaling the corpus is a change to the problem, not
+  to the model, and the eval has to be re-run every time it happens.
+- **HyDE makes it much worse here, and that is a real measurement, not an assumption.** Ten
+  DeepSeek passages per question, each retrieved and fused with RRF: 0.419 MRR fused, 0.309 for a
+  single call, against 0.622 for plain BM25. The hypothetical passages are four to six sentences
+  of fluent prose; the documents are two-line records ("Datavant junior", "PySpark remoto"). The
+  embedder cannot place the two in the same region, and the invented specifics — plausible
+  company names, plausible cities — pull retrieval toward the wrong records. RRF over ten noisy
+  rankings fuses the noise rather than cancelling it. HyDE is off by default, and this is why.
+- **Why BM25 is strong on this data:** short, entity-heavy documents, and questions that name
+  the entity. Rare exact tokens are exactly BM25's strength.
+- **Dense retrieval earns its place on vocabulary mismatch** — paraphrase queries over long
+  prose — which this corpus does not have.
 - **Reranking a BM25 shortlist with the embedder made it worse** at every pool size tried
-  (10, 20, 40), because the first stage rarely loses the right document and cosine adds noise.
-- **The HyDE row is a ceiling, not a result.** Without an API key the eval substitutes the target
-  document's own text for the hypothetical passage, so of course it scores 100%.
+  (10, 20, 40).
+- **One question fails in every configuration** ("empresa que pedía FastAPI y PostgreSQL en
+  Madrid") because the record's notes never mention FastAPI — a retrieval miss caused by the
+  data.
 
-One question fails in every configuration ("empresa que pedía FastAPI y PostgreSQL en Madrid")
-because the record's notes never mention FastAPI — a retrieval miss caused by the data.
+The earlier all-MiniLM-L6-v2 table (dense 0.600, hybrid 0.802 on 400 documents) has not been
+re-measured since the corpus grew; treat those numbers as historical, not current.
 
 ## Retrieval modes
 
