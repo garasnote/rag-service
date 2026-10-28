@@ -90,8 +90,8 @@ def main():
         hq = hyde_text(item)
         conf["hyde"].append(rrf([bm25.search(hq, k=10), dense.search_text(hq, k=10)], top=5))
 
-    print(f"corpus: {len(docs)} documentos | preguntas: {len(questions)} | embedder: {dense.embedder.name}")
-    print(f"hyde    : {'LLM (' + client.model + ')' if client else 'oráculo (techo, no medición real)'}\n")
+    print(f"corpus: {len(docs)} documents | questions: {len(questions)} | embedder: {dense.embedder.name}")
+    print(f"hyde    : {'LLM (' + client.model + ')' if client else 'oracle stand-in (ceiling, not a measurement)'}\n")
     print(f"{'config':8} {'hit@1':>6} {'hit@3':>6} {'MRR':>6}")
     results = {}
     for name, rankings in conf.items():
@@ -99,10 +99,10 @@ def main():
         results[name] = r
         print(f"{name:8} {r['hit1']:>6.0%} {r['hit3']:>6.0%} {r['mrr']:>6.3f}")
     best = max(results, key=lambda n: results[n]["mrr"])
-    print(f"\nmejor por MRR: {best}")
+    print(f"\nbest by MRR: {best}")
     for name in ("bm25", "hybrid"):
         if results[name]["misses"]:
-            print(f"\nfallos {name}:")
+            print(f"\nfailures for {name}:")
             for m in results[name]["misses"]:
                 print("  -", m)
 

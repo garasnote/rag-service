@@ -18,9 +18,9 @@ python3 -m pytest -q
 
 ```
 config        hit@1  hit@3    MRR
-bm25            75%   100%  0.875
-dense           62%    88%  0.781
-hybrid          75%   100%  0.854
+bm25            88%   100%  0.917
+dense           88%   100%  0.938
+hybrid          88%   100%  0.938
 hybrid 3:1      88%   100%  0.917
 ```
 
