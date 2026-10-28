@@ -20,6 +20,13 @@ embeddings = [
   "onnxruntime>=1.17",
   "tokenizers>=0.15",
 ]
+# The cross-encoder reranker: same three packages as embeddings, but a different
+# model (ms-marco, not sentence-transformers), so it gets its own extra.
+rerank = [
+  "numpy>=1.24",
+  "onnxruntime>=1.17",
+  "tokenizers>=0.15",
+]
 api = [
   "fastapi>=0.110",
   "uvicorn>=0.27",
