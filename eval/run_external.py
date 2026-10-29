@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-"""Independent-corpus check, second pass: English stemming + structured queries.
-
-Corpus: edwarddgao/open-apply-jobs (MIT), lever slice, 46,241 real postings.
-"""
 """Independent-corpus evaluation: the same pipeline on postings it has never seen.
 
 Corpus: edwarddgao/open-apply-jobs (MIT) — real ATS postings, one Lever day.

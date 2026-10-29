@@ -1,16 +1,4 @@
 #!/usr/bin/env python3
-"""Filter-derived ground truth: locations and roles from common to absurd.
-
-No human labels. A query is a sentence humans type; its gold set is mechanical —
-every posting that satisfies the metadata constraints named in the sentence
-(location, role family, seniority). Two systems answer each query:
-
-  text      BM25 over all 216k documents, no filter
-  filtered  BM25 inside the location pool, i.e. what a real product would do
-
-For rare and absurd combinations the interesting question is not P@10 but whether
-the system returns anything at all.
-"""
 """Filter-derived ground truth: metadata constraints as gold sets, no hand labels.
 
     python3 eval/run_filters.py --parquet /path/to/postings_all.parquet
@@ -27,7 +15,6 @@ import json
 import pathlib
 import re
 import statistics
-import sys
 import time
 
 import rag  # noqa: F401
@@ -77,7 +64,6 @@ def main():
     t = time.time()
     docs = load(pathlib.Path(args.parquet), max_chars=600)
     print(f"docs {len(docs)} in {time.time()-t:.0f}s", flush=True)
-    by_id = {d["id"]: d for d in docs}
 
     t = time.time()
     full = BM25(docs)
