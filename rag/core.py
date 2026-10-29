@@ -19,7 +19,8 @@ fue ha hay la las le les lo los mas me mi mis mucho muy nada ni no nos o para pe
 quien se sin sobre su sus tambien tan te tiene todo tu tus un una uno unos y ya
 the a an and are as at be by for from has have how in is it its of on or that the their this to was
 were what when where which who why will with you your""".split())
-WORD = re.compile(r"[a-z0-9][a-z0-9+#.-]*")
+# internal punctuation only: "analyst." -> analyst, "node.js" -> node.js
+WORD = re.compile(r"[a-z0-9]+(?:[.+#-][a-z0-9]+)*")
 # Token shapes are found on the *surface* text when stemming, because the entity
 # guard needs to see capitals before they are lowered away.
 SURFACE = re.compile(r"[0-9A-Za-z\u00c0-\u024f][0-9A-Za-z\u00c0-\u024f+#.-]*")

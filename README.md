@@ -276,17 +276,23 @@ view, so the collapse is reversible.
 
 | | |
 |---|---|
-| load (streamed parquet) | 23 s |
-| BM25 build | 17 s |
+| load (streamed parquet) | 28 s |
+| BM25 build | 23 s |
 | peak RSS | 1.9 GB |
-| query latency | median 0.24 s · p90 0.31 s |
-| hit@1 / hit@5 (title + company, 40 queries) | **42% / 65%** |
+| query latency | median 0.30 s · p90 0.35 s |
+| hit@1 / hit@5 (title + company, 40 queries) | **57% / 72%** |
 
 **Deduplication did more for retrieval than any index would.** On the same 40
-queries, the identical pipeline over the same harvest before the dedupe scored
-**30% hit@1 / 50% hit@5**; afterwards **42% / 65%**. Eleven thousand copies of the
-same posting were crowding the top of the ranking, and no reranker, HyDE prompt or
-approximate index fixes that — the corpus had to be cleaned first.
+queries, the identical pipeline over the un-deduplicated harvest scored
+**42% hit@1 / 55% hit@5**; after collapsing 11,904 copies, **57% / 72%**. Eleven
+thousand repeat listings were crowding the top of the ranking, and no reranker,
+HyDE prompt or approximate index fixes that — the corpus had to be cleaned first.
+
+A second bug was found while building this section, and it is worth stating because
+it flattered every number above: the tokenizer kept trailing punctuation, so
+`Data Analyst.` was indexed as `analyst.` and never matched a query for `analyst`.
+Fixing one regular expression moved BM25 on the same 216k corpus from 42% to 57%
+hit@1. Both figures in this README are post-fix.
 
 Two more results:
 
@@ -313,9 +319,9 @@ still only proven on small corpora, run against the 216,085-document harvest.
 
 | config | hit@1 | hit@5 | median |
 |---|---|---|---|
-| BM25 | **42%** | **65%** | 0.26 s |
-| dense (hashing-512) | 12% | 28% | 0.03 s |
-| hybrid (RRF) | 25% | 50% | 0.62 s |
+| BM25 | **57%** | **72%** | 0.29 s |
+| dense (hashing-512) | 23% | 45% | 0.06 s |
+| hybrid (RRF) | 40% | 62% | 0.79 s |
 
 This is section 2 again, at 216,000 documents instead of 2,569: on queries that
 name a document, BM25 wins and fusion loses. Hashing embeddings are cheap and
@@ -326,8 +332,8 @@ Dense earns its place on intent queries (§1), not on lookups.
 
 | config | hit@1 | hit@5 | median |
 |---|---|---|---|
-| BM25 over documents | **64%** | 88% | 0.11 s |
-| BM25 over windows, best per doc | 52% | **92%** | 0.49 s |
+| BM25 over documents | **72%** | **92%** | 0.10 s |
+| BM25 over windows, best per doc | 68% | **92%** | 0.51 s |
 
 Windows find a slightly better top-five and lose the top one, at 4.5× the latency
 and 7.7× the index. Long postings did not rescue it: it stays off by default.
@@ -436,8 +442,8 @@ it touches.
   best configuration measured (85% sat@5 at pool 40) and it is opt-in, because a
   second pass over every query is a deployment decision, not a default.
 - **Chunk-level retrieval is measured and stays off.** On 40,000 long postings
-  (7.7 windows each) windowing bought +4 points of hit@5, lost 12 points of hit@1
-  and cost 4.5× the latency (§8). Long bodies alone did not make it win.
+  (7.7 windows each) windowing bought nothing on hit@5, lost 4 points of hit@1 and
+  cost 5× the latency (§8). Long bodies alone did not make it win.
 - **Spanish stemming helps intent and slightly hurts entity hybrid.** 40% → 55%
   at sat@1 for bm25, but hybrid hit@3 drops 73% → 67% on 15 entity questions.
   That is why it is a flag and not the default.
