@@ -335,12 +335,65 @@ Dense earns its place on intent queries (§1), not on lookups.
 | BM25 over documents | **72%** | **92%** | 0.10 s |
 | BM25 over windows, best per doc | 68% | **92%** | 0.51 s |
 
-Windows find a slightly better top-five and lose the top one, at 4.5× the latency
-and 7.7× the index. Long postings did not rescue it: it stays off by default.
+Windows tie the top five, lose the top one, and cost 5× the latency and 7.7× the
+index. Long postings did not rescue it: it stays off by default.
 
 **The honest gap**: the harvest has no intent labels, only metadata. Every number
-in this section is a lookup. Measuring "junior data jobs fully remote" at 216k
-needs either human labels or a filter-based ground truth, and neither exists yet.
+in this section is a lookup. Section 9 measures intent the only way this corpus
+allows: with ground truth derived from its own filters.
+
+### 9. Filter-derived ground truth, because nobody is labelling 216,000 postings
+
+A query is a sentence a person types. Its gold set is mechanical: every posting
+that satisfies the constraints the sentence names — location, role family,
+seniority. Nine queries run from common to absurd, and each is answered twice:
+BM25 over the whole corpus (`text`) and BM25 inside the location pool
+(`filtered`), which is what a search product actually does.
+
+| query | pool | gold | text R@10 | filtered R@10 |
+|---|---|---|---|---|
+| junior data analyst jobs in Spain | 1,751 | 10 | 0.00 | 0.30 |
+| nurse jobs in Germany | 2,218 | 4 | 0.00 | 0.75 |
+| remote customer support jobs | 22,775 | 173 | 0.00 | 0.02 |
+| data analyst jobs in Bolivia | 17 | 5 | 0.40 | **1.00** |
+| software engineer jobs in Nepal | 8 | 4 | 0.25 | 0.75 |
+| machine learning jobs in Paraguay | 6 | 3 | 0.00 | 0.33 |
+| welder jobs in Poland | 1,226 | 0 | — | — |
+| nurses in Congo | 21 | 0 | — | — |
+| remote banana peeler with ten years in the DRC | 21 | 0 | — | — |
+
+Across the graded queries (three or more gold postings):
+
+| | text | filtered | |
+|---|---|---|---|
+| P@10 | 0.05 | **0.30** | 6× |
+| R@10 | 0.11 | **0.53** | 5× |
+| MRR | 0.20 | **0.74** | 3.7× |
+
+Three findings:
+
+- **Text search ignores constraints it was never told about.** "Nurse jobs in
+  Germany" retrieves ten German-looking postings and almost none of them are
+  nursing jobs; the word *Germany* is in the location column, not the text. A
+  metadata filter is not an optimisation here, it is the feature.
+- **The remote-support row is the honest counter-example.** With 22,775 candidates
+  and 173 gold postings, filtered R@10 is 0.02 — the filter is right and the
+  ranking inside it is weak, because "remote customer support" carries no
+  distinguishing words. Counting and ranking are different problems.
+- **The absurd queries are the interesting ones.** For *welder in Poland*, *nurses
+  in Congo* and *remote banana peeler with ten years in the DRC* no posting
+  satisfies the constraints. The filtered system returns nothing. The unfiltered
+  one returns ten confident results every time. A retrieval system that cannot
+  say "no such job" will happily invent one.
+
+The label rule is a regex over titles, so this benchmark rewards title-shaped
+relevance and would miss a perfect match buried in a body paragraph. It is
+mechanical, reproducible, and not a substitute for human judgement — it is what
+can be done without a labelling budget.
+
+```bash
+python3 eval/run_filters.py --parquet /path/to/postings_all.parquet
+```
 
 ## What the numbers say
 
