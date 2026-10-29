@@ -6,11 +6,16 @@
 ![core](https://img.shields.io/badge/core-stdlib%20only-2ea44f)
 ![tests](https://img.shields.io/badge/tests-80%20passed-2ea44f)
 ![license](https://img.shields.io/badge/license-WTFPL-brightgreen)
-![corpus](https://img.shields.io/badge/corpus-2%2C576%20documents-6f42c1)
+![corpus](https://img.shields.io/badge/corpus-2%2C569%20documents-6f42c1)
+![harvest](https://img.shields.io/badge/harvest-233k%20postings-6f42c1)
 
 Retrieval over **2,569 job postings and application records** — BM25 and a dense
 index, fused with Reciprocal Rank Fusion, answered by any OpenAI-compatible LLM,
 with a citation on every claim.
+
+The same pipeline also runs on a **233,000-posting harvest** from eleven ATS
+platforms, read straight from Parquet: 0.24 s per query, 216,085 documents with
+body text, and the deduplication that got it there (§7).
 
 Benchmarked on the queries people actually type — *"junior data jobs fully
 remote"*, *"anything in data I can do with no experience"* — not on questions
@@ -267,30 +272,50 @@ Limitations: one ATS, one day, English and US-heavy; the 12,000-document rows us
 23 queries (only those whose target fell inside the slice), so read them as a
 direction rather than a ranking of configurations.
 
-### 7. At 227,000 postings, brute force still answers in a quarter second
+### 7. At 216,000 postings, the duplicates were the problem
 
-The full harvest — 243,331 postings from eight ATS platforms, one Parquet file —
-read through the same `BM25` as everything above:
+The full harvest — 244,936 postings from eleven ATS platforms — deduplicated,
+exported to Parquet, and read through the same `BM25` as everything above.
+
+The harvest's only guard is `url` as a primary key, which is weaker than it looks:
+the same requisition is listed once per city, and one healthcare board carried 317
+copies of a single vacancy. Grouping on company + normalised title (requisition
+numbers stripped) + location found:
 
 | | |
 |---|---|
-| documents with body text | 226,869 |
-| load (streamed parquet) | 24 s |
-| BM25 build | 19 s |
+| postings harvested | 244,936 |
+| copies marked `dup_of` | 11,904 (4.9%) |
+| unique postings | 233,032 |
+| documents with body text | 216,085 |
+
+Nothing was deleted — copies are marked and hidden behind a `postings_unique`
+view, so the collapse is reversible.
+
+| | |
+|---|---|
+| load (streamed parquet) | 23 s |
+| BM25 build | 17 s |
 | peak RSS | 1.9 GB |
-| query latency | median 0.24 s · p90 0.33 s |
-| hit@1 / hit@5 (title + company, 40 queries) | 30% / 50% |
+| query latency | median 0.24 s · p90 0.31 s |
+| hit@1 / hit@5 (title + company, 40 queries) | **42% / 65%** |
 
-Two results, one of which contradicts what this README used to claim:
+**Deduplication did more for retrieval than any index would.** On the same 40
+queries, the identical pipeline over the same harvest before the dedupe scored
+**30% hit@1 / 50% hit@5**; afterwards **42% / 65%**. Eleven thousand copies of the
+same posting were crowding the top of the ranking, and no reranker, HyDE prompt or
+approximate index fixes that — the corpus had to be cleaned first.
 
-- **The ANN argument was wrong for BM25.** Exhaustive scoring of 226,869 documents
+Two more results:
+
+- **The ANN argument was wrong for BM25.** Exhaustive scoring of 216,085 documents
   takes 0.24 s. An approximate index would save microseconds and cost recall, so
   `rag/ann.py` stays off. The real price of scale is memory (1.9 GB) and startup
-  (19 s), not query time.
-- **Quality still decays with corpus size.** 92% MRR at 2,569 documents, 51% hit@5
-  at 46,241, 50% at 226,869 — on identity queries with thousands of near-duplicate
-  titles, a bigger corpus means more plausible wrong answers, and no index fixes
-  that.
+  (17 s), not query time.
+- **Comparisons across corpora are only honest with the query definition attached.**
+  2,569 documents are scored on intent questions (75% sat@5), 46,241 on title-only
+  queries (51% hit@5), 216,085 on title + company (65% hit@5). Three different
+  questions; the table above is the configuration we ship, not a trend line.
 
 ```bash
 pip install -e ".[parquet]"
@@ -389,14 +414,17 @@ it touches.
 - **Twenty intent questions and fifteen entity questions is a small benchmark.**
   One question is five percentage points. Enough to rank configurations against
   each other, not enough to claim absolute quality.
-- **ANN is implemented but not adopted.** At 2,571 documents an exhaustive numpy
-  scan is exact and equally fast; the graph costs a dependency and 86 ms of
-  build time. Revisit at 100k, with the same recall-versus-latency bench.
+- **ANN is implemented but not adopted, and the scale test says keep it that
+  way.** Exhaustive BM25 over 216,085 documents answers in 0.24 s (§7); the graph
+  would save microseconds and cost recall. What scale actually costs here is
+  memory (1.9 GB) and 17 s of startup.
 - **The reranker that wins needs a model download.** The cross-encoder is the
   best configuration measured (85% sat@5 at pool 40) and it is opt-in, because a
   second pass over every query is a deployment decision, not a default.
-- **Chunk-level citations are barely exercised here.** Only 33 postings exceed
-  600 characters, so the windowing path is proven by tests more than by data.
+- **Chunk-level citations are barely exercised on the tracker corpus.** Only 33
+  of its postings exceed 600 characters, so the windowing path is proven by tests
+  more than by data. The 233k harvest is the corpus where chunking finally has
+  long bodies to work on; measuring it there is the next experiment, not a result.
 - **Spanish stemming helps intent and slightly hurts entity hybrid.** 40% → 55%
   at sat@1 for bm25, but hybrid hit@3 drops 73% → 67% on 15 entity questions.
   That is why it is a flag and not the default.
@@ -411,7 +439,7 @@ it touches.
 - [x] Chunk-level citations for long postings
 - [x] Streamlit front end over `/ask`
 - [x] Re-run the scale bench at 227k documents — exhaustive BM25 still at 0.24 s, ANN stays off
-- [ ] A corpus with long postings, so chunking is measured on more than 33 documents
+- [ ] Chunking measured on the harvest, where postings are long (the 233k corpus has them)
 - [ ] Decide whether the cross-encoder reranker is worth a default second pass
 
 ## License
