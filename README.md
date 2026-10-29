@@ -304,6 +304,38 @@ pip install -e ".[parquet]"
 python3 eval/run_scale.py --parquet /path/to/postings_all.parquet
 ```
 
+### 8. The open questions at scale
+
+Section 7 answered what brute force costs. These are the three things that were
+still only proven on small corpora, run against the 216,085-document harvest.
+
+**Dense and hybrid**, on the same 40 title+company queries:
+
+| config | hit@1 | hit@5 | median |
+|---|---|---|---|
+| BM25 | **42%** | **65%** | 0.26 s |
+| dense (hashing-512) | 12% | 28% | 0.03 s |
+| hybrid (RRF) | 25% | 50% | 0.62 s |
+
+This is section 2 again, at 216,000 documents instead of 2,569: on queries that
+name a document, BM25 wins and fusion loses. Hashing embeddings are cheap and
+fast, and at this scale they are mostly noise — the hybrid inherits the noise.
+Dense earns its place on intent queries (§1), not on lookups.
+
+**Chunking**, on 40,000 long postings (7.67 windows each, 306,834 windows):
+
+| config | hit@1 | hit@5 | median |
+|---|---|---|---|
+| BM25 over documents | **64%** | 88% | 0.11 s |
+| BM25 over windows, best per doc | 52% | **92%** | 0.49 s |
+
+Windows find a slightly better top-five and lose the top one, at 4.5× the latency
+and 7.7× the index. Long postings did not rescue it: it stays off by default.
+
+**The honest gap**: the harvest has no intent labels, only metadata. Every number
+in this section is a lookup. Measuring "junior data jobs fully remote" at 216k
+needs either human labels or a filter-based ground truth, and neither exists yet.
+
 ## What the numbers say
 
 **Intent search is where the pipeline earns its keep.** Hybrid with the
@@ -403,10 +435,9 @@ it touches.
 - **The reranker that wins needs a model download.** The cross-encoder is the
   best configuration measured (85% sat@5 at pool 40) and it is opt-in, because a
   second pass over every query is a deployment decision, not a default.
-- **Chunk-level citations are barely exercised on the tracker corpus.** Only 33
-  of its postings exceed 600 characters, so the windowing path is proven by tests
-  more than by data. The 233k harvest is the corpus where chunking finally has
-  long bodies to work on; measuring it there is the next experiment, not a result.
+- **Chunk-level retrieval is measured and stays off.** On 40,000 long postings
+  (7.7 windows each) windowing bought +4 points of hit@5, lost 12 points of hit@1
+  and cost 4.5× the latency (§8). Long bodies alone did not make it win.
 - **Spanish stemming helps intent and slightly hurts entity hybrid.** 40% → 55%
   at sat@1 for bm25, but hybrid hit@3 drops 73% → 67% on 15 entity questions.
   That is why it is a flag and not the default.
@@ -421,7 +452,8 @@ it touches.
 - [x] Chunk-level citations for long postings
 - [x] Streamlit front end over `/ask`
 - [x] Re-run the scale bench at 227k documents — exhaustive BM25 still at 0.24 s, ANN stays off
-- [ ] Chunking measured on the harvest, where postings are long (the 233k corpus has them)
+- [x] Chunking measured on the harvest: +4 hit@5, −12 hit@1, 4.5× latency
+- [ ] Intent queries at scale — the harvest has no relevance labels, only metadata
 - [ ] Decide whether the cross-encoder reranker is worth a default second pass
 
 ## License
