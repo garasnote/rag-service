@@ -21,7 +21,8 @@ import sys
 
 
 def main(argv=None) -> int:
-    from rag.core import BM25, load_corpus
+    from rag.core import BM25
+    from rag.corpus import load_source
     from rag.embed import VectorIndex, get_embedder
     from rag.fusion import rrf
     from rag.rerank import NAMES, RerankerUnavailable, get_reranker, rerank_hits
@@ -40,11 +41,7 @@ def main(argv=None) -> int:
                     help="shortlist size handed to the reranker (-k when <= 0)")
     args = ap.parse_args(argv)
 
-    if args.parquet:
-        from rag.parquet import load as load_parquet
-        docs = load_parquet(args.parquet, limit=args.limit or None)
-    else:
-        docs = load_corpus(corpus=args.corpus) if args.corpus else load_corpus()
+    docs = load_source(args.parquet or args.corpus, limit=args.limit or None)
     if not docs:
         print("no documents: pass --corpus or point TRACKER/WAREHOUSE at real data",
               file=sys.stderr)

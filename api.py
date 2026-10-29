@@ -16,7 +16,8 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from rag.chunking import ChunkedBM25, citation_fields
-from rag.core import BM25, load_corpus
+from rag.core import BM25
+from rag.corpus import load_source
 from rag.llm import LLMError, answer as rag_answer
 
 app = FastAPI(title="job-market-rag", version="0.1.0")
@@ -27,7 +28,7 @@ def get_index():  # BM25, or ChunkedBM25 when passage-level citations are on
     global _index
     if _index is None:
         corpus = os.getenv("RAG_CORPUS")
-        docs = load_corpus(corpus=corpus) if corpus else load_corpus()
+        docs = load_source(corpus)
         _index = BM25(docs) if os.getenv("RAG_CHUNK") == "0" else ChunkedBM25(docs)
     return _index
 

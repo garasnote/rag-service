@@ -27,7 +27,8 @@ try:  # optional extra, declared as [project.optional-dependencies].ui
 except ModuleNotFoundError:  # keep the pure helpers importable in a stdlib-only checkout
     st = None
 
-from rag.core import BM25, load_corpus, strip_accents
+from rag.core import BM25, strip_accents
+from rag.corpus import load_source
 
 ROOT = pathlib.Path(__file__).resolve().parent
 FIXTURE = ROOT / "fixtures" / "corpus.json"
@@ -316,12 +317,12 @@ def load_documents(corpus_path=None) -> tuple:
     if explicit:
         path = pathlib.Path(explicit)
         if path.exists():
-            return load_corpus(corpus=path), path.name
+            return load_source(path), path.name
         raise FileNotFoundError(f"corpus not found: {path}")
-    docs = load_corpus()
+    docs = load_source()
     if docs:
         return docs, "tracker + warehouse"
-    return load_corpus(corpus=FIXTURE), FIXTURE.name
+    return load_source(FIXTURE), FIXTURE.name
 
 
 def search_local(query: str, k: int, index: BM25) -> list:

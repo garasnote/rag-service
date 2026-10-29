@@ -94,33 +94,15 @@ Three zones: ingestion builds both indexes offline, serving answers a request in
 milliseconds, and measurement gates every change. Nodes are modules that exist;
 dashed paths are optional and off by default.
 
-```
-        ┌──────────────┐   ┌────────────────┐      one document per posting,
-        │ job tracker  │   │ ATS warehouse  │      every one keeps its URL
-        │   (JSON)     │   │    (SQLite)    │
-        └──────┬───────┘   └───────┬────────┘
-               └────────┬──────────┘
-                        ▼
-                 ┌─────────────┐
-                 │   corpus    │   2,569 documents, deduplicated by URL
-                 └──────┬──────┘
-            ┌───────────┴────────────┐
-            ▼                        ▼
-     ┌─────────────┐          ┌─────────────┐
-     │    BM25     │          │    dense    │   brute-force cosine over
-     │  Okapi, k1  │          │    index    │   L2-normalised vectors
-     └──────┬──────┘          └──────┬──────┘
-            └───────────┬────────────┘
-                        ▼
-                 ┌─────────────┐
-                 │     RRF     │   rank fusion, optional weighting
-                 └──────┬──────┘
-                        ▼
-                 ┌─────────────┐
-                 │  LLM answer │   OpenAI-compatible, forced to cite [n]
-                 │  + sources  │   every claim maps to a numbered document
-                 └─────────────┘
-```
+| stage | what happens | where |
+|---|---|---|
+| **index** | BM25 (Okapi) and a dense vector index, built offline | `rag/core.py`, `rag/embed.py` |
+| **retrieve** | both rank the query, RRF fuses the two rankings | `rag/fusion.py` |
+| **answer** | any OpenAI-compatible LLM, forced to cite `[n]` | `rag/llm.py`, `rag/cli.py` |
+| **measure** | every change is scored before it ships | `eval/`, `docs/notes/` |
+
+Two corpora, one loader: 2,569 tracker records by default, or a 233k Parquet
+harvest with `--parquet`. Same index, same fusion, same thresholds.
 
 **No framework.** BM25 is fifty lines of Okapi, the vector index is a cosine
 loop, RRF is five lines, the eval harness is a list of questions. A framework
