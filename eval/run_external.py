@@ -22,7 +22,7 @@ import numpy as np
 import pyarrow.parquet as pq
 from snowballstemmer import stemmer as make_stemmer
 
-sys.path.insert(0, "~/Documents/JobApp/portfolio/rag-service")
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1]))
 from rag.core import BM25, tokenize          # noqa: E402
 from rag.embed import HashingEmbedder        # noqa: E402
 from rag.fusion import rrf                   # noqa: E402

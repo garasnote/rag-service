@@ -12,6 +12,7 @@ so relevance is decided by a rule, not by a human. Two systems answer each query
 """
 import argparse
 import json
+import os
 import pathlib
 import re
 import statistics
@@ -21,7 +22,9 @@ import rag  # noqa: F401
 from rag.core import BM25
 from rag.parquet import load
 
-PQ = "~/Documents/JobApp/data/market/postings_all.parquet"
+PQ = os.environ.get("POSTINGS_PARQUET") or str(
+    pathlib.Path.home() / "Documents/JobApp/data/market/postings_all.parquet"
+)
 
 JUNIOR = r"\b(junior|jr|entry|graduate|trainee|intern)\b"
 

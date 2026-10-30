@@ -8,6 +8,8 @@ the repo uses, on a corpus five times the size of the fixture one.
 """
 import argparse
 import json
+import os
+import pathlib
 import random
 import resource
 import statistics
@@ -19,7 +21,11 @@ from rag.core import BM25     # noqa: E402
 from rag.parquet import load  # noqa: E402
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--parquet", default="~/Documents/JobApp/data/market/postings_all.parquet")
+ap.add_argument(
+    "--parquet",
+    default=os.environ.get("POSTINGS_PARQUET")
+    or str(pathlib.Path.home() / "Documents/JobApp/data/market/postings_all.parquet"),
+)
 ap.add_argument("--chars", type=int, default=600)
 ap.add_argument("--queries", type=int, default=40)
 args = ap.parse_args()
