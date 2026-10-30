@@ -19,6 +19,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Public repo: no home directory belongs in it.
+      - name: No absolute local paths
+        run: |
+          if git grep -n -I -E '/(home|Users)/[A-Za-z0-9._-]+' -- . ; then
+            echo "::error::absolute local path committed; use a relative path or an env var"
+            exit 1
+          fi
+
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
